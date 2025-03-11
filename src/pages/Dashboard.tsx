@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -7,10 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, Clock, Award, BookOpen, User, DollarSign, Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar, Clock, Award, BookOpen, User, DollarSign, Calendar as CalendarIcon, UserCog } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 // Mock session data
 const upcomingSessions = [
@@ -122,6 +122,7 @@ const learningAnalytics = [
 const Dashboard = () => {
   const { isConnected, walletAddress, balance, connectWallet, completeSession } = useBlockchain();
   const [isCompleting, setIsCompleting] = useState(false);
+  const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
 
   const handleCompleteSession = async (sessionId: string, contractAddress: string) => {
     if (!isConnected) {
@@ -142,6 +143,13 @@ const Dashboard = () => {
       setIsCompleting(false);
     }
   };
+
+  React.useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -169,23 +177,35 @@ const Dashboard = () => {
             </Card>
           ) : (
             <>
-              {/* Dashboard Header with Wallet Info */}
               <div className="mb-8">
-                <h1 className="text-3xl font-bold mb-2">Your Dashboard</h1>
-                <div className="flex flex-wrap gap-4 items-center">
-                  <div className="glass-card px-4 py-2 rounded-lg">
-                    <span className="text-sm text-muted-foreground mr-2">Wallet:</span>
-                    <span className="font-mono">{walletAddress?.substring(0, 6)}...{walletAddress?.substring(38)}</span>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-3xl font-bold mb-2">Your Dashboard</h1>
+                    <div className="flex flex-wrap gap-4 items-center">
+                      <div className="glass-card px-4 py-2 rounded-lg">
+                        <span className="text-sm text-muted-foreground mr-2">Wallet:</span>
+                        <span className="font-mono">{walletAddress?.substring(0, 6)}...{walletAddress?.substring(38)}</span>
+                      </div>
+                      <div className="glass-card px-4 py-2 rounded-lg">
+                        <span className="text-sm text-muted-foreground mr-2">Balance:</span>
+                        <span>{balance}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="glass-card px-4 py-2 rounded-lg">
-                    <span className="text-sm text-muted-foreground mr-2">Balance:</span>
-                    <span>{balance}</span>
-                  </div>
+                  <Link to="/profile">
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <UserCog size={16} />
+                      <span>
+                        {user?.name || user?.email 
+                          ? `Edit profile (${user.name || user.email})` 
+                          : 'Edit profile'}
+                      </span>
+                    </Button>
+                  </Link>
                 </div>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-                {/* Left Column: Stats */}
                 <Card className="glass-card">
                   <CardHeader>
                     <CardTitle>Learning Stats</CardTitle>
@@ -235,7 +255,6 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
                 
-                {/* Middle Column: Progress */}
                 <Card className="glass-card">
                   <CardHeader>
                     <CardTitle>Your Learning Progress</CardTitle>
@@ -260,7 +279,6 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
                 
-                {/* Right Column: Learning Analytics */}
                 <Card className="glass-card">
                   <CardHeader>
                     <CardTitle>Learning Analytics</CardTitle>
@@ -283,7 +301,6 @@ const Dashboard = () => {
                 </Card>
               </div>
               
-              {/* Sessions Tab Section */}
               <Tabs defaultValue="upcoming" className="mb-10">
                 <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
                   <TabsTrigger value="upcoming">Upcoming Sessions</TabsTrigger>
