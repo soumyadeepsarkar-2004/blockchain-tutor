@@ -1,13 +1,18 @@
 
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, User, LogOut } from 'lucide-react';
+import { useBlockchain } from '@/context/BlockchainContext';
+import { toast } from 'sonner';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isConnected, walletAddress, disconnectWallet } = useBlockchain();
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -29,10 +34,33 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Check if user is logged in
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, [location.pathname]);
+
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    
+    if (isConnected) {
+      disconnectWallet();
+    }
+    
+    toast.success("Logged out successfully", {
+      description: "You have been signed out of your account.",
+    });
+    
+    navigate('/');
+  };
 
   return (
     <header 
@@ -66,8 +94,31 @@ const Header = () => {
         </nav>
 
         <div className="hidden md:flex items-center gap-4">
-          <Button variant="outline" className="text-sm">Sign In</Button>
-          <Button className="text-sm bg-tutor-blue hover:bg-tutor-blue-dark">Get Started</Button>
+          {user || isConnected ? (
+            <div className="flex items-center gap-4">
+              <div className="text-sm font-medium">
+                {user?.name || user?.email || (isConnected && walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(38)}` : 'User')}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-2"
+                onClick={handleLogout}
+              >
+                <LogOut size={16} />
+                Sign Out
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Button variant="outline" className="text-sm" onClick={() => navigate('/login')}>
+                Sign In
+              </Button>
+              <Button className="text-sm bg-tutor-blue hover:bg-tutor-blue-dark" onClick={() => navigate('/register')}>
+                Get Started
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -95,8 +146,21 @@ const Header = () => {
               </Link>
             ))}
             <div className="flex flex-col gap-3 mt-4">
-              <Button variant="outline" className="w-full text-sm">Sign In</Button>
-              <Button className="w-full text-sm bg-tutor-blue hover:bg-tutor-blue-dark">Get Started</Button>
+              {user || isConnected ? (
+                <Button 
+                  variant="outline" 
+                  className="w-full text-sm justify-start"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" className="w-full text-sm" onClick={() => navigate('/login')}>Sign In</Button>
+                  <Button className="w-full text-sm bg-tutor-blue hover:bg-tutor-blue-dark" onClick={() => navigate('/register')}>Get Started</Button>
+                </>
+              )}
             </div>
           </nav>
         </div>
