@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { UserCog, Save, Camera, ArrowLeft, Shield, Bell, Wallet } from 'lucide-react';
+import { UserCog, Save, Camera, ArrowLeft, Shield, Bell, Wallet, Plus, Trash2, MapPin, Phone } from 'lucide-react';
 
 const Profile = () => {
   const { isConnected, walletAddress, connectWallet } = useBlockchain();
@@ -22,8 +22,17 @@ const Profile = () => {
   const [profile, setProfile] = useState({
     name: 'Alex Johnson',
     email: 'alex.johnson@example.com',
+    phone: '+1 (555) 123-4567',
+    address: '123 Blockchain Ave, San Francisco, CA 94107',
     bio: 'Blockchain developer and crypto enthusiast. Learning smart contract development and DeFi protocols.',
     avatar: '/placeholder.svg',
+    wallets: [
+      {
+        address: walletAddress || '0x1234567890abcdef1234567890abcdef12345678',
+        label: 'Primary Wallet',
+        dateAdded: 'September 12, 2023'
+      }
+    ],
     preferences: {
       notifications: true,
       twoFactorAuth: false,
@@ -34,6 +43,7 @@ const Profile = () => {
   // Form state
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ ...profile });
+  const [newWallet, setNewWallet] = useState({ address: '', label: '' });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -51,6 +61,63 @@ const Profile = () => {
         [key]: !prev.preferences[key]
       }
     }));
+  };
+
+  const handleNewWalletChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewWallet(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleAddWallet = () => {
+    if (!newWallet.address || !newWallet.label) {
+      toast.error('Please provide both wallet address and label');
+      return;
+    }
+
+    const walletExists = formData.wallets.some(
+      wallet => wallet.address.toLowerCase() === newWallet.address.toLowerCase()
+    );
+
+    if (walletExists) {
+      toast.error('This wallet address is already in your profile');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      wallets: [
+        ...prev.wallets,
+        {
+          address: newWallet.address,
+          label: newWallet.label,
+          dateAdded: new Date().toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })
+        }
+      ]
+    }));
+
+    setNewWallet({ address: '', label: '' });
+    toast.success('Wallet added successfully');
+  };
+
+  const handleDeleteWallet = (index: number) => {
+    if (formData.wallets.length <= 1) {
+      toast.error('You must keep at least one wallet in your profile');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      wallets: prev.wallets.filter((_, i) => i !== index)
+    }));
+
+    toast.success('Wallet removed from your profile');
   };
 
   const handleSave = () => {
@@ -135,7 +202,7 @@ const Profile = () => {
                   <p className="text-sm text-muted-foreground mb-2">{profile.email}</p>
                   <div className="glass-card px-3 py-1 rounded-lg">
                     <span className="text-xs font-mono">
-                      {walletAddress?.substring(0, 6)}...{walletAddress?.substring(38)}
+                      {profile.wallets[0].address.substring(0, 6)}...{profile.wallets[0].address.substring(38)}
                     </span>
                   </div>
                 </div>
@@ -188,7 +255,7 @@ const Profile = () => {
                 <Tabs defaultValue="personal" className="space-y-6">
                   <TabsList className="grid grid-cols-3 w-full">
                     <TabsTrigger value="personal">Personal Info</TabsTrigger>
-                    <TabsTrigger value="wallet">Wallet</TabsTrigger>
+                    <TabsTrigger value="wallet">Wallets</TabsTrigger>
                     <TabsTrigger value="preferences">Preferences</TabsTrigger>
                   </TabsList>
                   
@@ -222,6 +289,41 @@ const Profile = () => {
                           <div className="p-2">{profile.email}</div>
                         )}
                       </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="phone" className="flex items-center gap-1">
+                          <Phone className="h-4 w-4" />
+                          Phone Number
+                        </Label>
+                        {isEditing ? (
+                          <Input 
+                            id="phone" 
+                            name="phone" 
+                            type="tel" 
+                            value={formData.phone} 
+                            onChange={handleInputChange} 
+                          />
+                        ) : (
+                          <div className="p-2">{profile.phone}</div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="address" className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          Address
+                        </Label>
+                        {isEditing ? (
+                          <Input 
+                            id="address" 
+                            name="address" 
+                            value={formData.address} 
+                            onChange={handleInputChange} 
+                          />
+                        ) : (
+                          <div className="p-2">{profile.address}</div>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
@@ -241,19 +343,72 @@ const Profile = () => {
                   </TabsContent>
                   
                   <TabsContent value="wallet" className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="bg-muted/40 rounded-lg p-4">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Wallet className="h-5 w-5 text-primary" />
-                          <h3 className="font-medium">Connected Wallet</h3>
-                        </div>
-                        <div className="font-mono text-sm truncate">
-                          {walletAddress}
-                        </div>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Connected since September 12, 2023
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="font-medium mb-4">Your Wallets</h3>
+                        <div className="space-y-4">
+                          {formData.wallets.map((wallet, index) => (
+                            <div key={index} className="bg-muted/40 rounded-lg p-4 relative">
+                              <div className="flex items-center gap-3 mb-2">
+                                <Wallet className="h-5 w-5 text-primary" />
+                                <h3 className="font-medium">{wallet.label}</h3>
+                                {isEditing && formData.wallets.length > 1 && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    className="absolute right-2 top-2 h-8 w-8 text-destructive hover:text-destructive/90"
+                                    onClick={() => handleDeleteWallet(index)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                              <div className="font-mono text-sm truncate">
+                                {wallet.address}
+                              </div>
+                              <div className="mt-2 text-xs text-muted-foreground">
+                                Connected since {wallet.dateAdded}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
+                      
+                      {isEditing && (
+                        <div className="bg-muted/20 rounded-lg p-4 border border-dashed border-muted-foreground/50">
+                          <h3 className="font-medium mb-4">Add New Wallet</h3>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="walletLabel">Wallet Label</Label>
+                              <Input 
+                                id="walletLabel" 
+                                name="label" 
+                                placeholder="e.g., Hardware Wallet"
+                                value={newWallet.label}
+                                onChange={handleNewWalletChange}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="walletAddress">Wallet Address</Label>
+                              <Input 
+                                id="walletAddress" 
+                                name="address" 
+                                placeholder="0x..."
+                                value={newWallet.address}
+                                onChange={handleNewWalletChange}
+                              />
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              className="w-full"
+                              onClick={handleAddWallet}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add Wallet
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                       
                       <div>
                         <h3 className="font-medium mb-3">Transaction History</h3>
