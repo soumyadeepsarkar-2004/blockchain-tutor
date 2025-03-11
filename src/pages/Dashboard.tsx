@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useBlockchain } from '@/context/BlockchainContext';
@@ -10,121 +11,138 @@ import { Calendar, Clock, Award, BookOpen, User, DollarSign, Calendar as Calenda
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { formatTime, formatPrice } from '@/utils/blockchain';
+import { ethers } from 'ethers';
 
-// Mock session data
-const upcomingSessions = [
-  {
-    id: 'sess-1',
-    tutorName: 'Dr. Sarah Johnson',
-    tutorAvatar: '/placeholder.svg',
-    date: '2023-09-15',
-    time: '14:00',
-    duration: 60,
-    topic: 'Smart Contract Security',
-    contractAddress: '0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b',
-    price: 75
-  },
-  {
-    id: 'sess-2',
-    tutorName: 'Michael Chen',
-    tutorAvatar: '/placeholder.svg',
-    date: '2023-09-17',
-    time: '10:30',
-    duration: 90,
-    topic: 'DeFi Protocol Analysis',
-    contractAddress: '0x2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1a',
-    price: 120
-  }
-];
+// Types for session data
+interface Session {
+  id: number;
+  tutor: string;
+  student: string;
+  time: number;
+  price: number;
+  completed: boolean;
+}
 
-// Mock past sessions
-const pastSessions = [
-  {
-    id: 'past-1',
-    tutorName: 'Elena Petrov',
-    tutorAvatar: '/placeholder.svg',
-    date: '2023-09-01',
-    time: '15:00',
-    duration: 60,
-    topic: 'Blockchain Architecture Basics',
-    contractAddress: '0x3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1a2b',
-    price: 75,
-    completed: true,
-    rating: 5
-  },
-  {
-    id: 'past-2',
-    tutorName: 'James Williams',
-    tutorAvatar: '/placeholder.svg',
-    date: '2023-08-27',
-    time: '11:00',
-    duration: 120,
-    topic: 'NFT Marketplace Development',
-    contractAddress: '0x4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1a2b3c',
-    price: 150,
-    completed: true,
-    rating: 4
-  },
-  {
-    id: 'past-3',
-    tutorName: 'Dr. Sarah Johnson',
-    tutorAvatar: '/placeholder.svg',
-    date: '2023-08-20',
-    time: '13:30',
-    duration: 60,
-    topic: 'Introduction to Solidity',
-    contractAddress: '0x5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1a2b3c4d',
-    price: 75,
-    completed: true,
-    rating: 5
-  }
-];
-
-// Mock learning progress data
-const learningProgress = [
-  {
-    id: 1,
-    course: 'Blockchain Fundamentals',
-    progress: 100,
-    completed: true,
-  },
-  {
-    id: 2,
-    course: 'Smart Contract Development',
-    progress: 68,
-    completed: false,
-  },
-  {
-    id: 3, 
-    course: 'DeFi Protocols',
-    progress: 42,
-    completed: false,
-  },
-  {
-    id: 4,
-    course: 'NFT Development',
-    progress: 25,
-    completed: false,
-  }
-];
-
-// Mock learning analytics data
-const learningAnalytics = [
-  { name: 'Week 1', hours: 3 },
-  { name: 'Week 2', hours: 5 },
-  { name: 'Week 3', hours: 4 },
-  { name: 'Week 4', hours: 7 },
-  { name: 'Week 5', hours: 6 },
-  { name: 'Week 6', hours: 8 },
-];
+// Types for course progress
+interface CourseProgress {
+  id: number;
+  course: string;
+  progress: number;
+  completed: boolean;
+}
 
 const Dashboard = () => {
-  const { isConnected, walletAddress, balance, connectWallet, completeSession } = useBlockchain();
+  const { isConnected, walletAddress, balance, connectWallet, completeSession, contract } = useBlockchain();
   const [isCompleting, setIsCompleting] = useState(false);
   const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
+  const navigate = useNavigate();
+  
+  // State for session data
+  const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
+  const [pastSessions, setPastSessions] = useState<Session[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Learning progress data - this would come from your database in a real app
+  const [learningProgress, setLearningProgress] = useState<CourseProgress[]>([]);
+  
+  // Mock learning analytics data (hours spent learning per week)
+  // In a real app, this would come from your database
+  const learningAnalytics = [
+    { name: 'Week 1', hours: 3 },
+    { name: 'Week 2', hours: 5 },
+    { name: 'Week 3', hours: 4 },
+    { name: 'Week 4', hours: 7 },
+    { name: 'Week 5', hours: 6 },
+    { name: 'Week 6', hours: 8 },
+  ];
 
-  const handleCompleteSession = async (sessionId: string, contractAddress: string) => {
+  // Get session data from contract
+  const fetchSessions = async () => {
+    if (!contract) return;
+
+    try {
+      setIsLoading(true);
+      const sessionCount = await contract.sessionCount();
+      const upcoming: Session[] = [];
+      const past: Session[] = [];
+      
+      // Get user email or name to match sessions
+      const currentUser = localStorage.getItem('user');
+      const userInfo = currentUser ? JSON.parse(currentUser) : null;
+      const userIdentifier = userInfo?.name || userInfo?.email || walletAddress;
+      
+      if (!userIdentifier) {
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch all sessions
+      for (let i = 0; i < sessionCount; i++) {
+        const session = await contract.sessions(i);
+        
+        // Check if this session belongs to the current user
+        if (session.student.toLowerCase() === userIdentifier.toLowerCase() || 
+            (typeof userIdentifier === 'string' && userIdentifier.includes('@') && 
+             session.student.toLowerCase() === userIdentifier.toLowerCase())) {
+          
+          const sessionObj: Session = {
+            id: i,
+            tutor: session.tutor,
+            student: session.student,
+            time: Number(session.time),
+            price: Number(session.price),
+            completed: session.completed
+          };
+          
+          if (session.completed) {
+            past.push(sessionObj);
+          } else {
+            upcoming.push(sessionObj);
+          }
+        }
+      }
+      
+      setUpcomingSessions(upcoming);
+      setPastSessions(past);
+      
+      // Also fetch enrolled courses from localStorage
+      const enrolledCoursesData = localStorage.getItem('enrolledCourses');
+      if (enrolledCoursesData) {
+        const parsedCourses = JSON.parse(enrolledCoursesData);
+        const progress: CourseProgress[] = parsedCourses.map((course: any) => ({
+          id: course.id,
+          course: course.title,
+          progress: course.progress || 0,
+          completed: course.progress === 100
+        }));
+        setLearningProgress(progress);
+      }
+      
+    } catch (error) {
+      console.error("Error fetching sessions:", error);
+      toast.error("Failed to load sessions", {
+        description: "There was an error fetching your session data."
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    
+    // If contract is available, fetch sessions
+    if (contract) {
+      fetchSessions();
+    }
+  }, [contract, walletAddress]);
+
+  const handleCompleteSession = async (sessionId: number) => {
     if (!isConnected) {
       toast.error("Please connect your wallet first");
       return;
@@ -132,9 +150,11 @@ const Dashboard = () => {
     
     setIsCompleting(true);
     try {
-      const success = await completeSession(contractAddress);
+      const success = await completeSession(sessionId);
       if (success) {
-        toast.success(`Session ${sessionId} completed successfully!`);
+        toast.success(`Session completed successfully!`);
+        // Refresh sessions
+        await fetchSessions();
       }
     } catch (error) {
       toast.error("Failed to complete session");
@@ -144,12 +164,10 @@ const Dashboard = () => {
     }
   };
 
-  React.useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -218,7 +236,9 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Total Learning Hours</p>
-                          <p className="text-2xl font-bold">33 hours</p>
+                          <p className="text-2xl font-bold">
+                            {pastSessions.reduce((total, session) => total + session.time/100, 0).toFixed(1)} hours
+                          </p>
                         </div>
                       </div>
                       
@@ -228,7 +248,7 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Courses Enrolled</p>
-                          <p className="text-2xl font-bold">4</p>
+                          <p className="text-2xl font-bold">{learningProgress.length}</p>
                         </div>
                       </div>
                       
@@ -238,7 +258,9 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Tutors Engaged</p>
-                          <p className="text-2xl font-bold">3</p>
+                          <p className="text-2xl font-bold">
+                            {new Set([...upcomingSessions, ...pastSessions].map(s => s.tutor)).size}
+                          </p>
                         </div>
                       </div>
                       
@@ -248,7 +270,9 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Certificates Earned</p>
-                          <p className="text-2xl font-bold">1</p>
+                          <p className="text-2xl font-bold">
+                            {learningProgress.filter(c => c.completed).length}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -260,22 +284,31 @@ const Dashboard = () => {
                     <CardTitle>Your Learning Progress</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {learningProgress.map(course => (
-                        <div key={course.id} className="space-y-2">
-                          <div className="flex justify-between">
-                            <p className="text-sm font-medium">{course.course}</p>
-                            <p className="text-sm text-muted-foreground">{course.progress}%</p>
+                    {learningProgress.length > 0 ? (
+                      <div className="space-y-4">
+                        {learningProgress.map(course => (
+                          <div key={course.id} className="space-y-2">
+                            <div className="flex justify-between">
+                              <p className="text-sm font-medium">{course.course}</p>
+                              <p className="text-sm text-muted-foreground">{course.progress}%</p>
+                            </div>
+                            <Progress value={course.progress} className="h-2" />
+                            {course.completed && (
+                              <Badge variant="outline" className="text-green-600 border-green-600">
+                                Completed
+                              </Badge>
+                            )}
                           </div>
-                          <Progress value={course.progress} className="h-2" />
-                          {course.completed && (
-                            <Badge variant="outline" className="text-green-600 border-green-600">
-                              Completed
-                            </Badge>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">No courses enrolled yet</p>
+                        <Link to="/courses">
+                          <Button className="mt-4">Browse Courses</Button>
+                        </Link>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
                 
@@ -308,158 +341,124 @@ const Dashboard = () => {
                 </TabsList>
                 
                 <TabsContent value="upcoming" className="mt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {upcomingSessions.length > 0 ? (
-                      upcomingSessions.map(session => (
-                        <Card key={session.id} className="glass-card overflow-hidden">
-                          <div className="p-6">
-                            <div className="flex items-center gap-4 mb-4">
-                              <div className="flex-shrink-0">
-                                <img 
-                                  src={session.tutorAvatar} 
-                                  alt={session.tutorName} 
-                                  className="w-12 h-12 rounded-full border-2 border-primary/20"
-                                />
-                              </div>
-                              <div>
-                                <h3 className="font-medium">{session.topic}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  with {session.tutorName}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-3 mb-4">
-                              <div className="flex items-center gap-2">
-                                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">
-                                  {new Date(session.date).toLocaleDateString('en-US', {
-                                    weekday: 'long',
-                                    month: 'short',
-                                    day: 'numeric'
-                                  })}
-                                </span>
+                  {isLoading ? (
+                    <div className="text-center py-10">
+                      <p>Loading sessions...</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {upcomingSessions.length > 0 ? (
+                        upcomingSessions.map(session => (
+                          <Card key={session.id} className="glass-card overflow-hidden">
+                            <div className="p-6">
+                              <div className="flex items-center gap-4 mb-4">
+                                <div>
+                                  <h3 className="font-medium">Session with {session.tutor}</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    Session #{session.id}
+                                  </p>
+                                </div>
                               </div>
                               
-                              <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">
-                                  {session.time} • {session.duration} minutes
-                                </span>
+                              <div className="space-y-3 mb-4">
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm">
+                                    Duration: {formatTime(session.time)}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm">${formatPrice(session.price)}</span>
+                                </div>
                               </div>
                               
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">${session.price}</span>
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-200">
+                                  Scheduled
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  ID: {session.id}
+                                </Badge>
+                              </div>
+                              
+                              <div className="flex gap-2">
+                                <Button 
+                                  className="flex-1"
+                                  onClick={() => handleCompleteSession(session.id)}
+                                  disabled={isCompleting}
+                                >
+                                  Complete Session
+                                </Button>
                               </div>
                             </div>
-                            
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-200">
-                                Paid
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                Contract: {session.contractAddress.substring(0, 6)}...{session.contractAddress.substring(38)}
-                              </Badge>
-                            </div>
-                            
-                            <div className="flex gap-2">
-                              <Button variant="outline" className="flex-1">Reschedule</Button>
-                              <Button 
-                                className="flex-1"
-                                onClick={() => handleCompleteSession(session.id, session.contractAddress)}
-                                disabled={isCompleting}
-                              >
-                                Complete
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))
-                    ) : (
-                      <div className="col-span-full text-center p-10">
-                        <p className="text-muted-foreground">No upcoming sessions found.</p>
-                        <Button className="mt-4">Book a Session</Button>
-                      </div>
-                    )}
-                  </div>
+                          </Card>
+                        ))
+                      ) : (
+                        <div className="col-span-full text-center p-10">
+                          <p className="text-muted-foreground">No upcoming sessions found.</p>
+                          <Link to="/tutors">
+                            <Button className="mt-4">Find a Tutor</Button>
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="past" className="mt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {pastSessions.length > 0 ? (
-                      pastSessions.map(session => (
-                        <Card key={session.id} className="glass-card overflow-hidden">
-                          <div className="p-6">
-                            <div className="flex items-center gap-4 mb-4">
-                              <div className="flex-shrink-0">
-                                <img 
-                                  src={session.tutorAvatar} 
-                                  alt={session.tutorName} 
-                                  className="w-12 h-12 rounded-full border-2 border-primary/20"
-                                />
-                              </div>
-                              <div>
-                                <h3 className="font-medium">{session.topic}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  with {session.tutorName}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-3 mb-4">
-                              <div className="flex items-center gap-2">
-                                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">
-                                  {new Date(session.date).toLocaleDateString('en-US', {
-                                    weekday: 'long',
-                                    month: 'short',
-                                    day: 'numeric'
-                                  })}
-                                </span>
+                  {isLoading ? (
+                    <div className="text-center py-10">
+                      <p>Loading sessions...</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {pastSessions.length > 0 ? (
+                        pastSessions.map(session => (
+                          <Card key={session.id} className="glass-card overflow-hidden">
+                            <div className="p-6">
+                              <div className="flex items-center gap-4 mb-4">
+                                <div>
+                                  <h3 className="font-medium">Session with {session.tutor}</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    Session #{session.id}
+                                  </p>
+                                </div>
                               </div>
                               
-                              <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">
-                                  {session.time} • {session.duration} minutes
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-1 mb-4">
-                              <div className="flex">
-                                {[...Array(5)].map((_, i) => (
-                                  <span 
-                                    key={i} 
-                                    className={`text-lg ${i < session.rating ? 'text-amber-500' : 'text-gray-300'}`}
-                                  >
-                                    ★
+                              <div className="space-y-3 mb-4">
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm">
+                                    Duration: {formatTime(session.time)}
                                   </span>
-                                ))}
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm">${formatPrice(session.price)}</span>
+                                </div>
                               </div>
-                              <span className="text-sm text-muted-foreground ml-2">
-                                Your rating
-                              </span>
+                              
+                              <div className="flex flex-wrap gap-2">
+                                <Badge className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-200">
+                                  Completed
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  ID: {session.id}
+                                </Badge>
+                              </div>
                             </div>
-                            
-                            <div className="flex flex-wrap gap-2">
-                              <Badge className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-200">
-                                Completed
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                ${session.price}
-                              </Badge>
-                            </div>
-                          </div>
-                        </Card>
-                      ))
-                    ) : (
-                      <div className="col-span-full text-center p-10">
-                        <p className="text-muted-foreground">No past sessions found.</p>
-                      </div>
-                    )}
-                  </div>
+                          </Card>
+                        ))
+                      ) : (
+                        <div className="col-span-full text-center p-10">
+                          <p className="text-muted-foreground">No past sessions found.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </>
