@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import Payment from "./pages/Payment";
 import { BlockchainProvider } from "./context/BlockchainContext";
 import { useEffect, useState } from "react";
 
@@ -25,6 +26,11 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   useEffect(() => {
     const user = localStorage.getItem('user');
     setIsAuthenticated(!!user);
+    
+    // If not authenticated, store the current path for redirect after login
+    if (!user) {
+      localStorage.setItem('redirectAfterLogin', window.location.pathname);
+    }
   }, []);
   
   if (isAuthenticated === null) {
@@ -60,6 +66,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/payment" 
+              element={
+                <ProtectedRoute>
+                  <Payment />
                 </ProtectedRoute>
               } 
             />

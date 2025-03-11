@@ -53,3 +53,53 @@ export const timeToHundredths = (timeString: string): number => {
   
   return hours * 100 + Math.round(minutes / 0.6);
 };
+
+/**
+ * Check if the user has an existing account
+ * @returns {boolean} True if the user has an account
+ */
+export const hasExistingAccount = (): boolean => {
+  const user = localStorage.getItem('user');
+  return !!user;
+};
+
+/**
+ * Redirect to payment page with the necessary information
+ * @param {string} itemType - Type of item (course or tutor)
+ * @param {string} itemId - ID of the item
+ * @param {number} price - Price of the item
+ */
+export const redirectToPayment = (itemType: 'course' | 'tutor', itemId: string, price: number): void => {
+  // In a real application, this would redirect to a payment gateway
+  // For now, we'll store the payment info in localStorage and redirect to a payment page
+  const paymentInfo = {
+    itemType,
+    itemId,
+    price,
+    timestamp: new Date().toISOString()
+  };
+  
+  localStorage.setItem('pendingPayment', JSON.stringify(paymentInfo));
+  
+  // Redirect to a payment page (you would create this page)
+  window.location.href = '/payment';
+};
+
+/**
+ * Check if user is authenticated and redirect to login if not
+ * @returns {boolean} True if authenticated, false if not (and redirects)
+ */
+export const requireAuth = (): boolean => {
+  const user = localStorage.getItem('user');
+  
+  if (!user) {
+    // Store the current URL to redirect back after login
+    localStorage.setItem('redirectAfterLogin', window.location.pathname);
+    
+    // Redirect to login
+    window.location.href = '/login';
+    return false;
+  }
+  
+  return true;
+};

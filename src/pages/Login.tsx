@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useBlockchain } from "@/context/BlockchainContext";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,22 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { connectWallet } = useBlockchain();
   const navigate = useNavigate();
+
+  // Check for redirect after login
+  useEffect(() => {
+    const redirectPath = localStorage.getItem('redirectAfterLogin');
+    
+    // If user is already logged in, redirect them
+    const user = localStorage.getItem('user');
+    if (user) {
+      if (redirectPath) {
+        localStorage.removeItem('redirectAfterLogin');
+        navigate(redirectPath);
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +54,15 @@ const Login = () => {
         toast.success("Login successful", {
           description: "Welcome back to Blockchain Tutor!",
         });
-        navigate('/dashboard');
+        
+        // Check if there's a redirect path
+        const redirectPath = localStorage.getItem('redirectAfterLogin');
+        if (redirectPath) {
+          localStorage.removeItem('redirectAfterLogin');
+          navigate(redirectPath);
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         toast.error("Invalid credentials", {
           description: "The email or password you entered is incorrect.",
@@ -60,7 +84,15 @@ const Login = () => {
       toast.success("Wallet connected", {
         description: "You are now signed in with your blockchain wallet.",
       });
-      navigate('/dashboard');
+      
+      // Check if there's a redirect path
+      const redirectPath = localStorage.getItem('redirectAfterLogin');
+      if (redirectPath) {
+        localStorage.removeItem('redirectAfterLogin');
+        navigate(redirectPath);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       toast.error("Wallet connection failed", {
         description: "There was a problem connecting your wallet. Please try again.",
