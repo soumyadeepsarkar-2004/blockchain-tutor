@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -112,7 +111,6 @@ const coursesData = [
           { id: 'l8', title: 'Automated Testing', duration: '28:50', free: false, completed: false }
         ]
       },
-      // Additional modules...
     ]
   }
 ];
@@ -150,8 +148,7 @@ const CourseDetail = () => {
   
   const handleEnroll = () => {
     if (!isConnected) {
-      toast({
-        title: "Wallet not connected",
+      toast("Wallet not connected", {
         description: "Please connect your wallet to enroll in this course.",
       });
       return;
