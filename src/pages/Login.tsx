@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useBlockchain } from "@/context/BlockchainContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,6 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { connectWallet } = useBlockchain();
   const navigate = useNavigate();
 
   // Check for redirect after login
@@ -78,28 +76,6 @@ const Login = () => {
     }
   };
 
-  const handleWalletLogin = async () => {
-    try {
-      await connectWallet();
-      toast.success("Wallet connected", {
-        description: "You are now signed in with your blockchain wallet.",
-      });
-      
-      // Check if there's a redirect path
-      const redirectPath = localStorage.getItem('redirectAfterLogin');
-      if (redirectPath) {
-        localStorage.removeItem('redirectAfterLogin');
-        navigate(redirectPath);
-      } else {
-        navigate('/dashboard');
-      }
-    } catch (error) {
-      toast.error("Wallet connection failed", {
-        description: "There was a problem connecting your wallet. Please try again.",
-      });
-    }
-  };
-
   return (
     <div className="container flex items-center justify-center min-h-screen py-20">
       <div className="w-full max-w-md">
@@ -152,25 +128,16 @@ const Login = () => {
                     )}
                   </button>
                 </div>
+                <div className="text-right">
+                  <Link to="/forgot-password" className="text-sm text-tutor-blue hover:text-tutor-blue-dark">
+                    Forgot password?
+                  </Link>
+                </div>
               </div>
               <Button type="submit" className="w-full bg-tutor-blue hover:bg-tutor-blue-dark" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
-            
-            <div className="my-4 flex items-center before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
-              <span className="px-4 text-muted-foreground text-sm">Or continue with</span>
-            </div>
-            
-            <Button 
-              variant="outline" 
-              type="button" 
-              onClick={handleWalletLogin} 
-              className="w-full"
-              disabled={isLoading}
-            >
-              Connect Wallet
-            </Button>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <div className="text-center text-sm text-muted-foreground">
