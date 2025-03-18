@@ -1,5 +1,4 @@
 
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Clock, 
@@ -26,20 +25,13 @@ export interface CourseProps {
 }
 
 const CourseCard = ({ course }: { course: CourseProps }) => {
-  const [isHovered, setIsHovered] = useState(false);
-
   return (
-    <div 
-      className="glass-card overflow-hidden h-full flex flex-col"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className="glass-card overflow-hidden h-full flex flex-col">
       <div className="relative aspect-video overflow-hidden">
         <img 
           src={course.image} 
           alt={course.title} 
-          className="w-full h-full object-cover transition-transform duration-700 ease-out"
-          style={{ transform: isHovered ? 'scale(1.05)' : 'scale(1)' }}
+          className="w-full h-full object-cover"
         />
         <div className="absolute top-3 right-3 z-10">
           <span className="px-2.5 py-1 text-xs font-medium bg-white/90 backdrop-blur-sm rounded-full text-tutor-blue">
@@ -83,9 +75,7 @@ const CourseCard = ({ course }: { course: CourseProps }) => {
               className="p-0 hover:bg-transparent hover:text-tutor-blue flex items-center gap-1"
             >
               View Course
-              <ChevronRight size={16} className="transition-transform duration-300" style={{
-                transform: isHovered ? 'translateX(4px)' : 'translateX(0)'
-              }}/>
+              <ChevronRight size={16} />
             </Button>
           </Link>
         </div>

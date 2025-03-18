@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
 import FeatureCards from '@/components/FeatureCards';
-import SmartContractDemo from '@/components/SmartContractDemo';
 import Footer from '@/components/Footer';
 import { ArrowRight, BookOpen, Clock, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,79 +11,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import CourseCard from '@/components/CourseCard';
 
-// Mock courses data for enrolled courses
-const enrolledCourses = [
-  {
-    id: "course-1",
-    title: "Smart Contract Development",
-    description: "Learn how to create secure and efficient smart contracts on the Ethereum blockchain.",
-    image: "https://images.unsplash.com/photo-1639322537228-f710d846310a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
-    duration: "8 weeks",
-    students: 1245,
-    rating: 4.8,
-    level: "Intermediate",
-    price: 99,
-    progress: 68,
-    lastAccessed: "2 days ago",
-    tutor: {
-      name: "Dr. Sarah Johnson",
-      avatar: "https://i.pravatar.cc/150?img=5"
-    }
-  }
-];
-
-// Mock recommended courses
-const recommendedCourses = [
-  {
-    id: "course-2",
-    title: "DeFi Protocol Analysis",
-    description: "Dive into the world of decentralized finance and learn how to analyze DeFi protocols.",
-    image: "https://images.unsplash.com/photo-1639322537504-6427a16b0a28?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1332&q=80",
-    duration: "6 weeks",
-    students: 978,
-    rating: 4.7,
-    level: "Advanced",
-    price: 129,
-    tutor: {
-      name: "Michael Chen",
-      avatar: "https://i.pravatar.cc/150?img=68"
-    }
-  },
-  {
-    id: "course-3",
-    title: "NFT Marketplace Development",
-    description: "Build your own NFT marketplace from scratch with this comprehensive guide.",
-    image: "https://images.unsplash.com/photo-1621761191319-c6fb62004040?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1332&q=80",
-    duration: "10 weeks",
-    students: 1120,
-    rating: 4.9,
-    level: "Intermediate",
-    price: 149,
-    tutor: {
-      name: "Elena Petrov",
-      avatar: "https://i.pravatar.cc/150?img=20"
-    }
-  },
-  {
-    id: "course-4",
-    title: "Blockchain Security Fundamentals",
-    description: "Learn essential security practices for building robust blockchain applications.",
-    image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
-    duration: "5 weeks",
-    students: 856,
-    rating: 4.6,
-    level: "Beginner",
-    price: 79,
-    tutor: {
-      name: "James Williams",
-      avatar: "https://i.pravatar.cc/150?img=11"
-    }
-  }
-];
-
 const Index = () => {
   const [user, setUser] = useState<{ name?: string; email?: string } | null>(null);
   const [time, setTime] = useState<string>("");
+  const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
 
   useEffect(() => {
     // Scroll to top when the component mounts
@@ -94,6 +24,12 @@ const Index = () => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
+      
+      // Get enrolled courses from localStorage if any
+      const storedCourses = localStorage.getItem('enrolledCourses');
+      if (storedCourses) {
+        setEnrolledCourses(JSON.parse(storedCourses));
+      }
     }
     
     // Set greeting based on time of day
@@ -106,6 +42,55 @@ const Index = () => {
       setTime("evening");
     }
   }, []);
+
+  // Sample recommended courses
+  const recommendedCourses = [
+    {
+      id: "course-1",
+      title: "Smart Contract Development",
+      description: "Learn how to create secure and efficient smart contracts on the Ethereum blockchain.",
+      image: "https://images.unsplash.com/photo-1639322537228-f710d846310a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
+      duration: "8 weeks",
+      students: 1245,
+      rating: 4.8,
+      level: "Intermediate",
+      price: 99,
+      tutor: {
+        name: "Dr. Sarah Johnson",
+        avatar: "https://i.pravatar.cc/150?img=5"
+      }
+    },
+    {
+      id: "course-2",
+      title: "DeFi Protocol Analysis",
+      description: "Dive into the world of decentralized finance and learn how to analyze DeFi protocols.",
+      image: "https://images.unsplash.com/photo-1639322537504-6427a16b0a28?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1332&q=80",
+      duration: "6 weeks",
+      students: 978,
+      rating: 4.7,
+      level: "Advanced",
+      price: 129,
+      tutor: {
+        name: "Michael Chen",
+        avatar: "https://i.pravatar.cc/150?img=68"
+      }
+    },
+    {
+      id: "course-3",
+      title: "NFT Marketplace Development",
+      description: "Build your own NFT marketplace from scratch with this comprehensive guide.",
+      image: "https://images.unsplash.com/photo-1621761191319-c6fb62004040?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1332&q=80",
+      duration: "10 weeks",
+      students: 1120,
+      rating: 4.9,
+      level: "Intermediate",
+      price: 149,
+      tutor: {
+        name: "Elena Petrov",
+        avatar: "https://i.pravatar.cc/150?img=20"
+      }
+    }
+  ];
 
   // Render different content based on whether user is logged in
   const renderContent = () => {
@@ -124,77 +109,92 @@ const Index = () => {
                 </p>
               </div>
               
-              {/* Continue Learning Section */}
-              <div className="mb-16">
-                <h2 className="text-xl md:text-2xl font-bold mb-6">Continue Learning</h2>
-                
-                {enrolledCourses.map(course => (
-                  <Card key={course.id} className="glass-card mb-6 overflow-hidden">
-                    <CardContent className="p-0">
-                      <div className="flex flex-col md:flex-row">
-                        <div className="w-full md:w-1/3 h-48 md:h-auto">
-                          <img 
-                            src={course.image} 
-                            alt={course.title} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="p-6 md:p-8 w-full md:w-2/3">
-                          <div className="flex flex-col h-full">
-                            <div>
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="h-6 w-6 rounded-full overflow-hidden">
-                                  <img src={course.tutor.avatar} alt={course.tutor.name} className="w-full h-full object-cover" />
+              {/* Continue Learning Section - Only show if user has enrolled courses */}
+              {enrolledCourses.length > 0 ? (
+                <div className="mb-16">
+                  <h2 className="text-xl md:text-2xl font-bold mb-6">Continue Learning</h2>
+                  
+                  {enrolledCourses.map(course => (
+                    <Card key={course.id} className="glass-card mb-6 overflow-hidden">
+                      <CardContent className="p-0">
+                        <div className="flex flex-col md:flex-row">
+                          <div className="w-full md:w-1/3 h-48 md:h-auto">
+                            <img 
+                              src={course.image} 
+                              alt={course.title} 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="p-6 md:p-8 w-full md:w-2/3">
+                            <div className="flex flex-col h-full">
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="h-6 w-6 rounded-full overflow-hidden">
+                                    <img src={course.tutor.avatar} alt={course.tutor.name} className="w-full h-full object-cover" />
+                                  </div>
+                                  <span className="text-sm text-tutor-neutral-dark">{course.tutor.name}</span>
                                 </div>
-                                <span className="text-sm text-tutor-neutral-dark">{course.tutor.name}</span>
+                                
+                                <h3 className="text-xl font-bold mb-2">{course.title}</h3>
+                                
+                                <div className="mb-4">
+                                  <div className="flex justify-between mb-1">
+                                    <span className="text-sm font-medium">Progress</span>
+                                    <span className="text-sm font-medium">{course.progress || 0}%</span>
+                                  </div>
+                                  <Progress value={course.progress || 0} className="h-2" />
+                                </div>
+                                
+                                <div className="flex items-center gap-4 text-xs text-tutor-neutral-dark mb-4">
+                                  <div className="flex items-center gap-1">
+                                    <Clock size={14} />
+                                    <span>Last accessed {course.lastAccessed || 'never'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <BookOpen size={14} />
+                                    <span>{course.duration}</span>
+                                  </div>
+                                </div>
                               </div>
                               
-                              <h3 className="text-xl font-bold mb-2">{course.title}</h3>
-                              
-                              <div className="mb-4">
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-sm font-medium">Progress</span>
-                                  <span className="text-sm font-medium">{course.progress}%</span>
-                                </div>
-                                <Progress value={course.progress} className="h-2" />
+                              <div className="mt-auto">
+                                <Link to={`/courses/${course.id}`}>
+                                  <Button className="bg-tutor-blue hover:bg-tutor-blue-dark text-white">
+                                    Resume Course
+                                    <ArrowRight size={16} className="ml-2" />
+                                  </Button>
+                                </Link>
                               </div>
-                              
-                              <div className="flex items-center gap-4 text-xs text-tutor-neutral-dark mb-4">
-                                <div className="flex items-center gap-1">
-                                  <Clock size={14} />
-                                  <span>Last accessed {course.lastAccessed}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <BookOpen size={14} />
-                                  <span>{course.duration}</span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className="mt-auto">
-                              <Link to={`/courses/${course.id}`}>
-                                <Button className="bg-tutor-blue hover:bg-tutor-blue-dark text-white">
-                                  Resume Course
-                                  <ArrowRight size={16} className="ml-2" />
-                                </Button>
-                              </Link>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                <div className="text-center mt-6">
+                      </CardContent>
+                    </Card>
+                  ))}
+                  
+                  <div className="text-center mt-6">
+                    <Link to="/courses">
+                      <Button variant="outline">
+                        View All My Courses
+                        <ArrowRight size={16} className="ml-2" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-16 text-center">
+                  <h2 className="text-xl md:text-2xl font-bold mb-6">You haven't enrolled in any courses yet</h2>
+                  <p className="text-tutor-neutral-dark max-w-2xl mx-auto mb-6">
+                    Explore our course catalog and start your blockchain learning journey today.
+                  </p>
                   <Link to="/courses">
-                    <Button variant="outline">
-                      View All My Courses
+                    <Button className="bg-tutor-blue hover:bg-tutor-blue-dark text-white">
+                      Browse Courses
                       <ArrowRight size={16} className="ml-2" />
                     </Button>
                   </Link>
                 </div>
-              </div>
+              )}
               
               {/* Course Recommendations */}
               <div>
@@ -214,8 +214,6 @@ const Index = () => {
               </div>
             </div>
           </section>
-          
-          <SmartContractDemo />
         </>
       );
     }
@@ -301,8 +299,6 @@ const Index = () => {
             </div>
           </div>
         </section>
-        
-        <SmartContractDemo />
         
         {/* Testimonials Section */}
         <section className="py-20 px-6 bg-gradient-to-b from-white to-tutor-neutral">
