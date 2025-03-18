@@ -17,6 +17,13 @@ const SmartContractDemo = () => {
     const [selectedCurrency, setSelectedCurrency] = useState("usd");
     const [ethPrice, setEthPrice] = useState(0);
     const [warning, setWarning] = useState("");
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    useEffect(() => {
+        // Check if user is logged in
+        const user = localStorage.getItem('user');
+        setIsLoggedIn(!!user);
+    }, []);
 
     const contractCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -83,17 +90,40 @@ contract TutorSession {
     };
 
     const simulateTransaction = () => {
+        if (!isLoggedIn) {
+            toast.error("Authentication required", {
+                description: "Please login to book a session",
+            });
+            return;
+        }
+        
         setIsProcessing(true);
-        toast.info("Processing blockchain transaction...", {
-            description: "Connecting to the network and initializing smart contract",
+        toast.info("Processing transaction...", {
+            description: "Connecting to the network",
         });
 
         setTimeout(() => {
             toast.success("Session booked successfully!", {
-                description: "Transaction confirmed. Smart contract deployed at 0x7bE8....5c2F",
+                description: "Transaction confirmed",
             });
             setIsProcessing(false);
             setIsDemoComplete(true);
+            
+            // Store booked session in local storage
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const sessions = user.sessions || [];
+            sessions.push({
+                id: Date.now(),
+                title: "Introduction to Blockchain Development",
+                tutor: "Michael Chen",
+                date: "Tomorrow at 3:00 PM",
+                duration: "60 minutes",
+                price: sessionFee,
+                currency: selectedCurrency.toUpperCase(),
+                status: "Upcoming"
+            });
+            user.sessions = sessions;
+            localStorage.setItem('user', JSON.stringify(user));
         }, 3000);
     };
 
@@ -118,6 +148,8 @@ contract TutorSession {
     useEffect(() => {
         if (ethPrice > 0) {
             setEthAmount(sessionFee / ethPrice);
+        } else {
+            setEthAmount(0);
         }
     }, [sessionFee, ethPrice]);
 
@@ -141,7 +173,7 @@ contract TutorSession {
         <section className="py-16 px-6">
             <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-12">
-                    <div className="inline-block mb-6 animate-fade-in">
+                    <div className="inline-block mb-6">
                         <span className="px-3 py-1 text-sm font-medium bg-[#0A84FF]/10 text-[#0A84FF] rounded-full">
                             Blockchain in Action
                         </span>
@@ -151,7 +183,7 @@ contract TutorSession {
                         <span className="text-gradient">Secure Learning</span>
                     </h2>
                     <p className="max-w-2xl mx-auto text-[#86868b] mb-8">
-                        Our platform uses blockchain smart contracts to ensure transparent, secure, and automated tutoring sessions. Try our interactive demo below.
+                        Our platform uses blockchain smart contracts to ensure transparent, secure, and automated tutoring sessions.
                     </p>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -184,10 +216,10 @@ contract TutorSession {
                     <div className="glass-card overflow-hidden">
                         <div className="bg-gradient-to-r from-[#0A84FF] to-[#0055D4] text-white p-6">
                             <h3 className="font-bold text-xl mb-2">
-                                Demo: Book a Tutor Session
+                                Book a Session
                             </h3>
                             <p className="text-white/80 text-sm">
-                                Experience how blockchain secures and automates the tutoring process
+                                Schedule a blockchain tutoring session with payment via smart contract
                             </p>
                         </div>
                         <div className="p-6">
@@ -258,12 +290,12 @@ contract TutorSession {
                                                     Processing...
                                                 </div>
                                             ) : (
-                                                <>Deploy Smart Contract</>
+                                                <>Book Session</>
                                             )}
                                         </Button>
                                     )}
                                     <p className="text-xs text-center text-[#86868b] mt-3">
-                                        This is a demo. No actual blockchain transaction will be performed.
+                                        {!isLoggedIn ? "Please login to book a session" : "By continuing, you agree to our terms of service"}
                                     </p>
                                 </div>
                             </div>

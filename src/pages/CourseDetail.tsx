@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -11,32 +12,32 @@ import { useBlockchain } from '@/context/BlockchainContext';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
-// Mock courses data
+// Match with courses in Courses.tsx
 const coursesData = [
   {
     id: '1',
-    title: 'Blockchain Fundamentals',
+    title: 'Blockchain Fundamentals for Beginners',
     description: 'A comprehensive introduction to blockchain technology, cryptocurrencies, and decentralized applications. Learn the core concepts that power the blockchain revolution.',
-    image: '/placeholder.svg',
+    image: 'https://images.unsplash.com/photo-1639762681057-408e52192e55?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80',
     level: 'Beginner',
     duration: '4 weeks',
-    enrolled: 1240,
+    enrolled: 2145,
     rating: 4.8,
     reviews: 214,
-    price: 299,
+    price: 59.99,
     instructor: {
-      name: 'Dr. Sarah Johnson',
-      avatar: '/placeholder.svg',
+      name: 'Alex Morgan',
+      avatar: 'https://i.pravatar.cc/150?img=3',
       title: 'Blockchain Architecture Specialist',
-      bio: 'Former lead developer at Ethereum, specializing in smart contract development and security auditing with over 8 years of experience.'
+      bio: 'Former lead developer specializing in blockchain architecture and smart contract development with over 6 years of experience in the cryptocurrency space.'
     },
     modules: [
       {
         id: 'm1',
         title: 'Introduction to Blockchain',
         lessons: [
-          { id: 'l1', title: 'What is Blockchain Technology?', duration: '15:30', free: true, completed: true },
-          { id: 'l2', title: 'Distributed Ledger Systems', duration: '22:45', free: true, completed: true },
+          { id: 'l1', title: 'What is Blockchain Technology?', duration: '15:30', free: true, completed: false },
+          { id: 'l2', title: 'Distributed Ledger Systems', duration: '22:45', free: true, completed: false },
           { id: 'l3', title: 'Consensus Mechanisms', duration: '18:20', free: false, completed: false },
           { id: 'l4', title: 'Blockchain vs. Traditional Databases', duration: '20:10', free: false, completed: false }
         ]
@@ -75,18 +76,18 @@ const coursesData = [
   },
   {
     id: '2',
-    title: 'Advanced Smart Contract Development',
+    title: 'Ethereum Smart Contract Development',
     description: 'Take your smart contract skills to the next level. Learn advanced Solidity patterns, security best practices, and how to build complex decentralized applications.',
-    image: '/placeholder.svg',
+    image: 'https://images.unsplash.com/photo-1639322537228-f710d846310a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1832&q=80',
     level: 'Intermediate',
     duration: '6 weeks',
-    enrolled: 870,
+    enrolled: 1832,
     rating: 4.9,
     reviews: 156,
-    price: 399,
+    price: 79.99,
     instructor: {
-      name: 'Michael Chen',
-      avatar: '/placeholder.svg',
+      name: 'Sophia Chen',
+      avatar: 'https://i.pravatar.cc/150?img=5',
       title: 'Smart Contract Security Expert',
       bio: 'Security researcher and smart contract auditor with experience working on major DeFi protocols and NFT platforms.'
     },
@@ -110,15 +111,32 @@ const coursesData = [
           { id: 'l7', title: 'Audit Methodologies', duration: '35:15', free: false, completed: false },
           { id: 'l8', title: 'Automated Testing', duration: '28:50', free: false, completed: false }
         ]
-      },
+      }
     ]
   }
 ];
 
 const CourseDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { isConnected, connectWallet } = useBlockchain();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  
+  useEffect(() => {
+    // Check if user is logged in and if they're enrolled in this course
+    const user = localStorage.getItem('user');
+    if (user) {
+      setIsLoggedIn(true);
+      const userData = JSON.parse(user);
+      const enrolledCourses = userData.enrolledCourses || [];
+      setIsEnrolled(enrolledCourses.includes(id));
+    }
+    
+    // Scroll to top
+    window.scrollTo(0, 0);
+  }, [id]);
   
   const course = coursesData.find(c => c.id === id);
   
@@ -130,7 +148,7 @@ const CourseDetail = () => {
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Course Not Found</h1>
             <p className="text-muted-foreground mb-6">The course you're looking for doesn't exist or has been removed.</p>
-            <Button>View All Courses</Button>
+            <Button onClick={() => navigate('/courses')}>View All Courses</Button>
           </div>
         </main>
         <Footer />
@@ -147,12 +165,25 @@ const CourseDetail = () => {
   const progressPercentage = Math.round((completedLessons / totalLessons) * 100);
   
   const handleEnroll = () => {
-    if (!isConnected) {
-      toast("Wallet not connected", {
-        description: "Please connect your wallet to enroll in this course.",
+    if (!isLoggedIn) {
+      toast.error("Authentication required", {
+        description: "Please login to enroll in this course",
       });
+      navigate('/login');
       return;
     }
+    
+    // Store enrolled course in local storage
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const enrolledCourses = user.enrolledCourses || [];
+    
+    if (!enrolledCourses.includes(id)) {
+      enrolledCourses.push(id);
+      user.enrolledCourses = enrolledCourses;
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+    
+    setIsEnrolled(true);
     
     toast.success("Enrollment Successful", {
       description: `You've successfully enrolled in ${course.title}`,
@@ -162,10 +193,33 @@ const CourseDetail = () => {
   const handlePlayLesson = (lesson: any) => {
     if (lesson.free) {
       toast.success(`Playing: ${lesson.title}`);
-    } else if (!isConnected) {
-      toast.error("Please connect your wallet to access this lesson");
+    } else if (!isLoggedIn) {
+      toast.error("Please login to access this lesson");
+      navigate('/login');
+    } else if (!isEnrolled) {
+      toast.error("You need to enroll in this course to access this lesson");
     } else {
       toast.success(`Playing: ${lesson.title}`);
+      
+      // Mark the lesson as completed
+      const updatedCoursesData = [...coursesData];
+      const courseIndex = updatedCoursesData.findIndex(c => c.id === id);
+      
+      if (courseIndex !== -1) {
+        const moduleIndex = updatedCoursesData[courseIndex].modules.findIndex(
+          m => m.lessons.some(l => l.id === lesson.id)
+        );
+        
+        if (moduleIndex !== -1) {
+          const lessonIndex = updatedCoursesData[courseIndex].modules[moduleIndex].lessons.findIndex(
+            l => l.id === lesson.id
+          );
+          
+          if (lessonIndex !== -1) {
+            updatedCoursesData[courseIndex].modules[moduleIndex].lessons[lessonIndex].completed = true;
+          }
+        }
+      }
     }
   };
 
@@ -218,20 +272,28 @@ const CourseDetail = () => {
               </div>
               
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Course progress</span>
-                  <span className="text-sm font-medium">{progressPercentage}%</span>
-                </div>
-                <Progress value={progressPercentage} className="h-2" />
+                {isEnrolled && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Course progress</span>
+                      <span className="text-sm font-medium">{progressPercentage}%</span>
+                    </div>
+                    <Progress value={progressPercentage} className="h-2" />
+                  </>
+                )}
                 
                 <div className="flex gap-2">
-                  {!isConnected ? (
-                    <Button onClick={connectWallet} className="flex-1">
-                      Connect Wallet to Enroll
+                  {!isLoggedIn ? (
+                    <Button onClick={() => navigate('/login')} className="flex-1">
+                      Login to Enroll
                     </Button>
-                  ) : (
+                  ) : !isEnrolled ? (
                     <Button onClick={handleEnroll} className="flex-1">
                       Enroll for ${course.price}
+                    </Button>
+                  ) : (
+                    <Button onClick={() => setActiveTab('curriculum')} className="flex-1">
+                      Continue Learning
                     </Button>
                   )}
                 </div>
@@ -398,7 +460,7 @@ const CourseDetail = () => {
                                   className="ml-4"
                                   onClick={() => handlePlayLesson(lesson)}
                                 >
-                                  {lesson.free || isConnected ? (
+                                  {lesson.free || isEnrolled ? (
                                     "Play"
                                   ) : (
                                     <LockIcon className="h-4 w-4" />

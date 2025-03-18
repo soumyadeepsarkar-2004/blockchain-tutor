@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Filter, ChevronRight, ChevronLeft } from 'lucide-react';
 
-// Sample course data
+// Realistic course data
 const coursesData: CourseProps[] = [
   {
     id: '1',
@@ -98,14 +98,62 @@ const coursesData: CourseProps[] = [
       name: 'Michael Johnson',
       avatar: 'https://i.pravatar.cc/150?img=15'
     }
+  },
+  {
+    id: '7',
+    title: 'Blockchain for Business Leaders',
+    description: 'Understand how blockchain can transform your business operations and create new opportunities.',
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=1200',
+    duration: '4 hours',
+    students: 1245,
+    rating: 4.6,
+    level: 'Beginner',
+    price: 49.99,
+    tutor: {
+      name: 'Sarah Johnson',
+      avatar: 'https://i.pravatar.cc/150?img=20'
+    }
+  },
+  {
+    id: '8',
+    title: 'Solidity Programming Masterclass',
+    description: 'Become an expert in Solidity development for Ethereum and EVM-compatible blockchains.',
+    image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=1200',
+    duration: '12 hours',
+    students: 987,
+    rating: 4.9,
+    level: 'Advanced',
+    price: 99.99,
+    tutor: {
+      name: 'Marcus Lee',
+      avatar: 'https://i.pravatar.cc/150?img=23'
+    }
+  },
+  {
+    id: '9',
+    title: 'Crypto Trading Fundamentals',
+    description: 'Learn the basics of cryptocurrency trading, market analysis, and portfolio management.',
+    image: 'https://images.unsplash.com/photo-1621761191319-c6fb62004040?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=1200',
+    duration: '6 hours',
+    students: 3421,
+    rating: 4.5,
+    level: 'Beginner',
+    price: 59.99,
+    tutor: {
+      name: 'Jessica Chen',
+      avatar: 'https://i.pravatar.cc/150?img=29'
+    }
   }
 ];
+
+const ITEMS_PER_PAGE = 6;
 
 const Courses = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredCourses, setFilteredCourses] = useState(coursesData);
   const [isFiltering, setIsFiltering] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string | null>('All');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     // Scroll to top when the component mounts
@@ -119,10 +167,15 @@ const Courses = () => {
         course.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredCourses(filtered);
+      setCurrentPage(1);
+    } else if (activeFilter && activeFilter !== 'All') {
+      const filtered = coursesData.filter(course => course.level === activeFilter);
+      setFilteredCourses(filtered);
+      setCurrentPage(1);
     } else {
       setFilteredCourses(coursesData);
     }
-  }, [searchTerm]);
+  }, [searchTerm, activeFilter]);
 
   const filterByLevel = (level: string) => {
     setActiveFilter(level);
@@ -132,6 +185,30 @@ const Courses = () => {
     } else {
       const filtered = coursesData.filter(course => course.level === level);
       setFilteredCourses(filtered);
+    }
+    setCurrentPage(1);
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentCourses = filteredCourses.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo(0, 0);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      goToPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      goToPage(currentPage - 1);
     }
   };
 
@@ -146,7 +223,7 @@ const Courses = () => {
                 Explore Our <span className="text-gradient">Blockchain Courses</span>
               </h1>
               <p className="max-w-2xl mx-auto text-tutor-neutral-dark">
-                Dive into expert-led courses designed to build your blockchain skills from the ground up, with personalized AI support every step of the way.
+                Dive into expert-led courses designed to build your blockchain skills from the ground up, with personalized support every step of the way.
               </p>
             </div>
             
@@ -173,7 +250,7 @@ const Courses = () => {
               </div>
               
               {isFiltering && (
-                <div className="glass-card p-4 mb-6 animate-slide-down">
+                <div className="glass-card p-4 mb-6">
                   <h3 className="font-medium mb-3">Filter by Level</h3>
                   <div className="flex flex-wrap gap-2">
                     {['All', 'Beginner', 'Intermediate', 'Advanced', 'All Levels'].map((level) => (
@@ -194,9 +271,9 @@ const Courses = () => {
               )}
             </div>
             
-            {filteredCourses.length > 0 ? (
+            {currentCourses.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredCourses.map((course) => (
+                {currentCourses.map((course) => (
                   <CourseCard key={course.id} course={course} />
                 ))}
               </div>
@@ -221,21 +298,52 @@ const Courses = () => {
             
             {filteredCourses.length > 0 && (
               <div className="flex items-center justify-center mt-12 gap-2">
-                <Button variant="outline" size="sm" className="h-9 w-9 p-0 rounded-full">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-9 w-9 p-0 rounded-full"
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                >
                   <ChevronLeft size={16} />
                   <span className="sr-only">Previous page</span>
                 </Button>
-                {[1, 2, 3].map((page) => (
-                  <Button 
-                    key={page}
-                    variant={page === 1 ? "default" : "outline"} 
-                    size="sm" 
-                    className={`h-9 w-9 p-0 rounded-full ${page === 1 ? 'bg-tutor-blue hover:bg-tutor-blue-dark' : ''}`}
-                  >
-                    {page}
-                  </Button>
-                ))}
-                <Button variant="outline" size="sm" className="h-9 w-9 p-0 rounded-full">
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(page => {
+                    // Show first page, last page, and 1 page around current page
+                    return page === 1 || 
+                           page === totalPages || 
+                           (page >= currentPage - 1 && page <= currentPage + 1);
+                  })
+                  .map((page, index, array) => {
+                    // Add ellipsis where pages are skipped
+                    const showEllipsisBefore = index > 0 && array[index - 1] !== page - 1;
+                    const showEllipsisAfter = index < array.length - 1 && array[index + 1] !== page + 1;
+                    
+                    return (
+                      <React.Fragment key={page}>
+                        {showEllipsisBefore && <span className="mx-1">...</span>}
+                        <Button 
+                          variant={page === currentPage ? "default" : "outline"} 
+                          size="sm" 
+                          className={`h-9 w-9 p-0 rounded-full ${page === currentPage ? 'bg-tutor-blue hover:bg-tutor-blue-dark' : ''}`}
+                          onClick={() => goToPage(page)}
+                        >
+                          {page}
+                        </Button>
+                        {showEllipsisAfter && <span className="mx-1">...</span>}
+                      </React.Fragment>
+                    );
+                  })}
+                
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-9 w-9 p-0 rounded-full"
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
                   <ChevronRight size={16} />
                   <span className="sr-only">Next page</span>
                 </Button>
