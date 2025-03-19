@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -22,11 +23,11 @@ const Login = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
+    const { login, user } = useAuth();
 
     useEffect(() => {
         const redirectPath = localStorage.getItem("redirectAfterLogin");
 
-        const user = localStorage.getItem("user");
         if (user) {
             if (redirectPath) {
                 localStorage.removeItem("redirectAfterLogin");
@@ -35,7 +36,7 @@ const Login = () => {
                 navigate("/dashboard");
             }
         }
-    }, [navigate]);
+    }, [user, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,14 +51,9 @@ const Login = () => {
         setIsLoading(true);
 
         try {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-
-            if (email.includes("@") && password.length >= 6) {
-                localStorage.setItem("user", JSON.stringify({ email }));
-                toast.success("Login successful", {
-                    description: "Welcome back to Blockchain Tutor!",
-                });
-
+            const success = await login(email, password);
+            
+            if (success) {
                 const redirectPath = localStorage.getItem("redirectAfterLogin");
                 if (redirectPath) {
                     localStorage.removeItem("redirectAfterLogin");
@@ -65,10 +61,6 @@ const Login = () => {
                 } else {
                     navigate("/dashboard");
                 }
-            } else {
-                toast.error("Invalid credentials", {
-                    description: "The email or password you entered is incorrect.",
-                });
             }
         } catch (error) {
             toast.error("Login failed", {
