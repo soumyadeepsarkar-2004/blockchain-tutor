@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,20 @@ const Login = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, user } = useAuth();
+
+    useEffect(() => {
+        const redirectPath = localStorage.getItem("redirectAfterLogin");
+
+        if (user) {
+            if (redirectPath) {
+                localStorage.removeItem("redirectAfterLogin");
+                navigate(redirectPath);
+            } else {
+                navigate("/dashboard");
+            }
+        }
+    }, [user, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,11 +54,13 @@ const Login = () => {
             const success = await login(email, password);
             
             if (success) {
-                // Check if there's a redirect path stored
-                const redirectPath = localStorage.getItem('redirectAfterLogin') || '/dashboard';
-                localStorage.removeItem('redirectAfterLogin');
-                
-                navigate(redirectPath);
+                const redirectPath = localStorage.getItem("redirectAfterLogin");
+                if (redirectPath) {
+                    localStorage.removeItem("redirectAfterLogin");
+                    navigate(redirectPath);
+                } else {
+                    navigate("/dashboard");
+                }
             }
         } catch (error) {
             toast.error("Login failed", {
