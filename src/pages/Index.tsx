@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
@@ -10,9 +9,10 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import CourseCard from '@/components/CourseCard';
+import { useAuth } from '@/context/AuthContext';
 
 const Index = () => {
-  const [user, setUser] = useState<{ name?: string; email?: string } | null>(null);
+  const { user } = useAuth();
   const [time, setTime] = useState<string>("");
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
 
@@ -20,16 +20,10 @@ const Index = () => {
     // Scroll to top when the component mounts
     window.scrollTo(0, 0);
     
-    // Check if user is logged in
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      
-      // Get enrolled courses from localStorage if any
-      const storedCourses = localStorage.getItem('enrolledCourses');
-      if (storedCourses) {
-        setEnrolledCourses(JSON.parse(storedCourses));
-      }
+    // Get enrolled courses from localStorage if any
+    const storedCourses = localStorage.getItem('enrolledCourses');
+    if (storedCourses) {
+      setEnrolledCourses(JSON.parse(storedCourses));
     }
     
     // Set greeting based on time of day
@@ -41,7 +35,7 @@ const Index = () => {
     } else {
       setTime("evening");
     }
-  }, []);
+  }, [user]); // Add user dependency to re-run effect when auth state changes
 
   // Sample recommended courses
   const recommendedCourses = [

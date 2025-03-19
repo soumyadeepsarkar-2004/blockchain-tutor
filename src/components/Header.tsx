@@ -47,7 +47,8 @@ const Header = () => {
       disconnectWallet();
     }
     
-    navigate('/');
+    // Force navigation to home page to trigger a re-render of the Index component
+    navigate('/', { replace: true });
   };
 
   return (
