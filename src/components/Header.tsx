@@ -4,15 +4,16 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X, User, LogOut } from 'lucide-react';
 import { useBlockchain } from '@/context/BlockchainContext';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { isConnected, walletAddress, disconnectWallet } = useBlockchain();
+  const { user, logout } = useAuth();
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -34,30 +35,17 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Check if user is logged in
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, [location.pathname]);
-
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
+    logout();
     
     if (isConnected) {
       disconnectWallet();
     }
-    
-    toast.success("Logged out successfully", {
-      description: "You have been signed out of your account.",
-    });
     
     navigate('/');
   };

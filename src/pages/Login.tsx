@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -22,6 +23,7 @@ const Login = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -36,26 +38,14 @@ const Login = () => {
         setIsLoading(true);
 
         try {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-
-            // Simple validation - in a real app, this would be a backend call
-            if (email.includes("@") && password.length >= 6) {
-                // Store user in localStorage
-                localStorage.setItem("user", JSON.stringify({ email }));
-                
+            const success = await login(email, password);
+            
+            if (success) {
                 // Check if there's a redirect path stored
                 const redirectPath = localStorage.getItem('redirectAfterLogin') || '/dashboard';
                 localStorage.removeItem('redirectAfterLogin');
                 
-                toast.success("Login successful", {
-                    description: "Welcome back to Blockchain Tutor!",
-                });
-                
                 navigate(redirectPath);
-            } else {
-                toast.error("Invalid credentials", {
-                    description: "The email or password you entered is incorrect.",
-                });
             }
         } catch (error) {
             toast.error("Login failed", {

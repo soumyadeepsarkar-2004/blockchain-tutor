@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -24,6 +25,7 @@ const Register = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
+    const { register } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,21 +54,15 @@ const Register = () => {
         setIsLoading(true);
 
         try {
-            // Simulate an API call
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            const success = await register(name, email, password);
             
-            // Simple storage - in a real app, this would be a backend call
-            localStorage.setItem("user", JSON.stringify({ name, email }));
-            
-            toast.success("Registration successful", {
-                description: "Your account has been created successfully!",
-            });
-            
-            // Check if there's a redirect path stored
-            const redirectPath = localStorage.getItem('redirectAfterLogin') || '/dashboard';
-            localStorage.removeItem('redirectAfterLogin');
-            
-            navigate(redirectPath);
+            if (success) {
+                // Check if there's a redirect path stored
+                const redirectPath = localStorage.getItem('redirectAfterLogin') || '/dashboard';
+                localStorage.removeItem('redirectAfterLogin');
+                
+                navigate(redirectPath);
+            }
         } catch (error) {
             toast.error("Registration failed", {
                 description: "There was a problem creating your account. Please try again.",

@@ -14,12 +14,12 @@ const Hero = () => {
           </span>
         </div>
         
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight md:leading-tight lg:leading-tight mb-6 text-balance">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight md:leading-tight lg:leading-tight mb-6">
           <span className="text-gradient">Effective Learning</span>
           <br /> Powered by Blockchain
         </h1>
         
-        <p className="max-w-2xl mx-auto text-lg text-tutor-neutral-dark mb-8 text-balance">
+        <p className="max-w-2xl mx-auto text-lg text-tutor-neutral-dark mb-8">
           Unlock your potential with our blockchain tutoring service. Experience interactive lessons, secure payments, and expert guidance from industry professionals.
         </p>
         
