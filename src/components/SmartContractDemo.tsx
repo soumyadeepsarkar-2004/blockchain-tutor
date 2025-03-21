@@ -2,8 +2,10 @@
 import { useState, useEffect } from "react";
 import { Button } from '@/components/ui/button';
 import { Input } from "@/components/ui/input";
-import { Code, Check, Copy, Clock, DollarSign } from "lucide-react";
+import { Code, Check, Copy, Clock, DollarSign, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import { useBlockchain, NETWORKS } from "@/context/BlockchainContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const SmartContractDemo = () => {
     const [isCopied, setIsCopied] = useState(false);
@@ -18,12 +20,19 @@ const SmartContractDemo = () => {
     const [ethPrice, setEthPrice] = useState(0);
     const [warning, setWarning] = useState("");
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const { isConnected, connectWallet, currentNetwork, switchNetwork } = useBlockchain();
+    const [selectedNetwork, setSelectedNetwork] = useState<keyof typeof NETWORKS>(currentNetwork);
 
     useEffect(() => {
         // Check if user is logged in
         const user = localStorage.getItem('user');
         setIsLoggedIn(!!user);
     }, []);
+
+    useEffect(() => {
+        // Set the selected network to match current network when it changes
+        setSelectedNetwork(currentNetwork);
+    }, [currentNetwork]);
 
     const contractCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -89,7 +98,11 @@ contract TutorSession {
         setTimeout(() => setIsCopied(false), 2000);
     };
 
-    const simulateTransaction = () => {
+    const handleNetworkChange = (value: string) => {
+        setSelectedNetwork(value as keyof typeof NETWORKS);
+    };
+
+    const simulateTransaction = async () => {
         if (!isLoggedIn) {
             toast.error("Authentication required", {
                 description: "Please login to book a session",
@@ -98,13 +111,37 @@ contract TutorSession {
         }
         
         setIsProcessing(true);
+        
+        // Connect wallet or switch network if needed
+        if (!isConnected) {
+            try {
+                await connectWallet(selectedNetwork);
+            } catch (error) {
+                toast.error("Wallet connection failed", {
+                    description: "Please connect your wallet to proceed.",
+                });
+                setIsProcessing(false);
+                return;
+            }
+        } else if (currentNetwork !== selectedNetwork) {
+            // Switch to the selected network
+            const switched = await switchNetwork(selectedNetwork);
+            if (!switched) {
+                toast.error("Network switch failed", {
+                    description: "Please manually switch networks in your wallet.",
+                });
+                setIsProcessing(false);
+                return;
+            }
+        }
+        
         toast.info("Processing transaction...", {
-            description: "Connecting to the network",
+            description: `Connecting to the ${NETWORKS[selectedNetwork].name} network`,
         });
 
         setTimeout(() => {
             toast.success("Session booked successfully!", {
-                description: "Transaction confirmed",
+                description: `Transaction confirmed on ${NETWORKS[selectedNetwork].name}`,
             });
             setIsProcessing(false);
             setIsDemoComplete(true);
@@ -120,6 +157,7 @@ contract TutorSession {
                 duration: "60 minutes",
                 price: sessionFee,
                 currency: selectedCurrency.toUpperCase(),
+                network: NETWORKS[selectedNetwork].name,
                 status: "Upcoming"
             });
             user.sessions = sessions;
@@ -243,6 +281,31 @@ contract TutorSession {
                                 <div className="flex items-start gap-3 flex-col">
                                     <div className="flex gap-3 items-center justify-center">
                                         <div className="h-8 w-8 rounded-full bg-[#0A84FF]/10 flex items-center justify-center text-[#0A84FF] shrink-0">
+                                            <Wallet size={18} />
+                                        </div>
+                                        <h4 className="font-medium mb-1">Network Selection</h4>
+                                    </div>
+                                    <div className="px-11">
+                                        <Select value={selectedNetwork} onValueChange={handleNetworkChange}>
+                                            <SelectTrigger className="w-full mb-2">
+                                                <SelectValue placeholder="Select network" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {Object.keys(NETWORKS).map((networkKey) => (
+                                                    <SelectItem key={networkKey} value={networkKey}>
+                                                        {NETWORKS[networkKey as keyof typeof NETWORKS].name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-sm text-[#86868b]">
+                                            Transaction will be processed on the {NETWORKS[selectedNetwork].name} network.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3 flex-col">
+                                    <div className="flex gap-3 items-center justify-center">
+                                        <div className="h-8 w-8 rounded-full bg-[#0A84FF]/10 flex items-center justify-center text-[#0A84FF] shrink-0">
                                             <DollarSign size={18} />
                                         </div>
                                         <h4 className="font-medium mb-1">Payment Details</h4>
@@ -268,7 +331,7 @@ contract TutorSession {
                                 <div className="flex flex-col px-11">
                                     <h2 className="font-medium">ETH Conversion</h2>
                                     <p className="font-medium">
-                                        {sessionFee} {selectedCurrency.toUpperCase()} ≈ {ethAmount.toFixed(6)} ETH
+                                        {sessionFee} {selectedCurrency.toUpperCase()} ≈ {ethAmount.toFixed(6)} {selectedNetwork === 'EDUCHAIN' ? 'EDU' : 'ETH'}
                                     </p>
                                 </div>
                                 <div className="border-t border-white/20">
@@ -279,7 +342,7 @@ contract TutorSession {
                                                 Transaction Successful
                                             </div>
                                             <p className="text-sm">
-                                                Your session has been booked. The smart contract has been deployed to the blockchain.
+                                                Your session has been booked on the {NETWORKS[selectedNetwork].name} network.
                                             </p>
                                         </div>
                                     ) : (
@@ -295,7 +358,7 @@ contract TutorSession {
                                         </Button>
                                     )}
                                     <p className="text-xs text-center text-[#86868b] mt-3">
-                                        {!isLoggedIn ? "Please login to book a session" : "By continuing, you agree to our terms of service"}
+                                        {!isLoggedIn ? "Please login to book a session" : `By continuing, you agree to process this transaction on the ${NETWORKS[selectedNetwork].name} network`}
                                     </p>
                                 </div>
                             </div>

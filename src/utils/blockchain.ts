@@ -1,4 +1,6 @@
 
+import { NETWORKS } from "@/context/BlockchainContext";
+
 /**
  * Format time from hundredths to a human-readable string
  * @param {number} timeInHundredths - Time in hundredths (e.g., 150 for 1.5)
@@ -61,6 +63,38 @@ export const timeToHundredths = (timeString: string): number => {
 export const hasExistingAccount = (): boolean => {
   const user = localStorage.getItem('user');
   return !!user;
+};
+
+/**
+ * Format blockchain address to a readable string with prefix and suffix
+ * @param {string} address - Full blockchain address
+ * @param {number} prefixLength - Number of chars to show at start (default 6)
+ * @param {number} suffixLength - Number of chars to show at end (default 4)
+ * @returns {string} Formatted address string
+ */
+export const formatAddress = (address: string, prefixLength = 6, suffixLength = 4): string => {
+  if (!address || address.length < (prefixLength + suffixLength)) {
+    return address;
+  }
+  
+  return `${address.substring(0, prefixLength)}...${address.substring(address.length - suffixLength)}`;
+};
+
+/**
+ * Get network explorer URL for a transaction or address
+ * @param {string} hash - Transaction hash or address
+ * @param {keyof typeof NETWORKS} network - Network key (e.g., 'EDUCHAIN', 'SEPOLIA')
+ * @param {string} type - Type of explorer URL ('tx' or 'address', default 'tx')
+ * @returns {string} Explorer URL
+ */
+export const getExplorerUrl = (
+  hash: string, 
+  network: keyof typeof NETWORKS, 
+  type: 'tx' | 'address' = 'tx'
+): string => {
+  const baseUrl = NETWORKS[network].blockExplorer;
+  
+  return `${baseUrl}${type}/${hash}`;
 };
 
 /**

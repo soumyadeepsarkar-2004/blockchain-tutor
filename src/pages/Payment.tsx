@@ -3,11 +3,14 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useBlockchain } from "@/context/BlockchainContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useBlockchain, NETWORKS } from "@/context/BlockchainContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { formatPrice } from "@/utils/blockchain";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PaymentDetails {
   itemType: 'course' | 'tutor';
@@ -19,7 +22,8 @@ interface PaymentDetails {
 const Payment = () => {
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const { isConnected, connectWallet, bookSession } = useBlockchain();
+  const { isConnected, connectWallet, bookSession, currentNetwork, switchNetwork } = useBlockchain();
+  const [selectedNetwork, setSelectedNetwork] = useState<keyof typeof NETWORKS>(currentNetwork);
   const navigate = useNavigate();
 
   // Get payment details from localStorage
@@ -46,15 +50,33 @@ const Payment = () => {
     }
   }, [navigate]);
 
+  // Update selected network when current network changes
+  useEffect(() => {
+    setSelectedNetwork(currentNetwork);
+  }, [currentNetwork]);
+
+  const handleNetworkChange = (value: string) => {
+    setSelectedNetwork(value as keyof typeof NETWORKS);
+  };
+
   const handlePayment = async () => {
     if (!paymentDetails) return;
     
     if (!isConnected) {
       try {
-        await connectWallet();
+        await connectWallet(selectedNetwork);
       } catch (error) {
         toast.error("Wallet connection failed", {
           description: "Please connect your wallet to proceed with payment.",
+        });
+        return;
+      }
+    } else if (currentNetwork !== selectedNetwork) {
+      // Switch to the selected network if needed
+      const switched = await switchNetwork(selectedNetwork);
+      if (!switched) {
+        toast.error("Network switch failed", {
+          description: "Please manually switch networks in your wallet.",
         });
         return;
       }
@@ -105,7 +127,7 @@ const Payment = () => {
         
         if (success) {
           toast.success("Tutor session booked successfully!", {
-            description: "Your session has been added to the blockchain.",
+            description: `Your session has been added to the ${NETWORKS[selectedNetwork].name} blockchain.`,
           });
         } else {
           throw new Error("Blockchain transaction failed");
@@ -161,6 +183,31 @@ const Payment = () => {
                     <p className="font-medium text-lg">${formatPrice(paymentDetails.price * 100)}</p>
                   </div>
                   
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Blockchain Network</p>
+                    <Select value={selectedNetwork} onValueChange={handleNetworkChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select network" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(NETWORKS).map((networkKey) => (
+                          <SelectItem key={networkKey} value={networkKey}>
+                            {NETWORKS[networkKey as keyof typeof NETWORKS].name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {selectedNetwork === 'SEPOLIA' && (
+                    <Alert variant="warning" className="bg-yellow-50 border-yellow-200">
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-yellow-600">
+                        Using Sepolia requires an Infura ID. You'll need to set this in your wallet connection.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
                   <div className="pt-4">
                     <Button 
                       className="w-full"
@@ -171,7 +218,7 @@ const Payment = () => {
                     </Button>
                     
                     <p className="text-xs text-center mt-4 text-muted-foreground">
-                      By clicking Pay, you agree to our Terms of Service and authorize a blockchain transaction.
+                      By clicking Pay, you agree to our Terms of Service and authorize a blockchain transaction on {NETWORKS[selectedNetwork].name}.
                     </p>
                   </div>
                 </CardContent>

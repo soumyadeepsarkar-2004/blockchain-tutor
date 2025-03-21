@@ -2,142 +2,40 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
 import { ethers } from 'ethers';
+import ContractABI from '@/utils/ContractABI.json';
 
-// Add the Contract ABI
-const ContractABI = [
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "tutor",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "student",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "time",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "price",
-        "type": "uint256"
-      }
-    ],
-    "name": "bookSession",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+// Network Configuration
+export const NETWORKS = {
+  EDUCHAIN: {
+    name: 'Educhain',
+    chainId: 656476,
+    rpcUrl: 'https://rpc.open-campus-codex.gelato.digital',
+    contractAddress: '0xcf4f8075ee7B8f128fF2BfdF3DcEA82de88DA6AB',
+    symbol: 'EDU',
+    blockExplorer: 'https://opencampus-codex.blockscout.com/'
   },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "sessionId",
-        "type": "uint256"
-      }
-    ],
-    "name": "completeSession",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "sessionId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getSessionPrice",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "sessionCount",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "sessions",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "tutor",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "student",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "time",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "price",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "completed",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
+  SEPOLIA: {
+    name: 'Ethereum Sepolia',
+    chainId: 11155111,
+    rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_ID', // Users need to replace with their Infura ID
+    contractAddress: '0xcf4f8075ee7B8f128fF2BfdF3DcEA82de88DA6AB', // Should be replaced with actual Sepolia contract
+    symbol: 'ETH',
+    blockExplorer: 'https://sepolia.etherscan.io/'
   }
-];
-
-const CONTRACT_ADDRESS = "0xcf4f8075ee7B8f128fF2BfdF3DcEA82de88DA6AB";
-const CHAIN_ID = 656476;
-const RPC_URL = "https://rpc.open-campus-codex.gelato.digital";
+};
 
 interface BlockchainContextType {
   isConnected: boolean;
   walletAddress: string | null;
   balance: string;
-  connectWallet: () => Promise<void>;
+  connectWallet: (networkKey?: keyof typeof NETWORKS) => Promise<void>;
   disconnectWallet: () => void;
   bookSession: (tutorName: string, sessionTime: number, price: number) => Promise<boolean>;
   completeSession: (sessionId: number) => Promise<boolean>;
   isProcessing: boolean;
   contract: ethers.Contract | null;
+  currentNetwork: keyof typeof NETWORKS;
+  switchNetwork: (networkKey: keyof typeof NETWORKS) => Promise<boolean>;
 }
 
 // Create a context with default values
@@ -150,7 +48,9 @@ const BlockchainContext = createContext<BlockchainContextType>({
   bookSession: async () => false,
   completeSession: async () => false,
   isProcessing: false,
-  contract: null
+  contract: null,
+  currentNetwork: 'EDUCHAIN',
+  switchNetwork: async () => false
 });
 
 export const useBlockchain = () => useContext(BlockchainContext);
@@ -165,6 +65,7 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
   const [balance, setBalance] = useState('0');
   const [isProcessing, setIsProcessing] = useState(false);
   const [contract, setContract] = useState<ethers.Contract | null>(null);
+  const [currentNetwork, setCurrentNetwork] = useState<keyof typeof NETWORKS>('EDUCHAIN');
 
   // Check for wallet connection on load
   useEffect(() => {
@@ -173,6 +74,17 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
         try {
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
           if (accounts.length > 0) {
+            // Get the current chain ID
+            const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+            const chainIdNumber = parseInt(chainId, 16);
+            
+            // Determine which network we're on
+            let network: keyof typeof NETWORKS = 'EDUCHAIN';
+            if (chainIdNumber === NETWORKS.SEPOLIA.chainId) {
+              network = 'SEPOLIA';
+            }
+            setCurrentNetwork(network);
+            
             const provider = new ethers.BrowserProvider(window.ethereum);
             const walletAddr = accounts[0];
             setWalletAddress(walletAddr);
@@ -181,11 +93,16 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
             // Get balance
             const balanceWei = await provider.getBalance(walletAddr);
             const balanceEth = ethers.formatEther(balanceWei);
-            setBalance(parseFloat(balanceEth).toFixed(4) + ' ETH');
+            const symbol = NETWORKS[network].symbol;
+            setBalance(parseFloat(balanceEth).toFixed(4) + ` ${symbol}`);
             
             // Set up contract
             const signer = await provider.getSigner();
-            const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, ContractABI, signer);
+            const contractInstance = new ethers.Contract(
+              NETWORKS[network].contractAddress, 
+              ContractABI, 
+              signer
+            );
             setContract(contractInstance);
           }
         } catch (error) {
@@ -205,17 +122,79 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
           checkConnection();
         }
       });
+      
+      // Listen for chain changes
+      window.ethereum.on('chainChanged', () => {
+        // Reload the page on chain change to refresh all data
+        window.location.reload();
+      });
     }
     
     return () => {
       if (typeof window.ethereum !== 'undefined') {
         window.ethereum?.removeAllListeners?.('accountsChanged');
+        window.ethereum?.removeAllListeners?.('chainChanged');
       }
     };
   }, []);
 
+  // Switch network function
+  const switchNetwork = async (networkKey: keyof typeof NETWORKS): Promise<boolean> => {
+    if (typeof window.ethereum === 'undefined') {
+      toast.error('No wallet detected', {
+        description: 'Please install MetaMask or another Ethereum wallet to continue.',
+      });
+      return false;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      const network = NETWORKS[networkKey];
+      const chainIdHex = `0x${network.chainId.toString(16)}`;
+      
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: chainIdHex }]
+        });
+      } catch (switchError: any) {
+        // This error code indicates that the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: chainIdHex,
+              chainName: network.name,
+              nativeCurrency: { name: network.name, symbol: network.symbol, decimals: 18 },
+              rpcUrls: [network.rpcUrl],
+              blockExplorerUrls: [network.blockExplorer]
+            }]
+          });
+        } else {
+          throw switchError;
+        }
+      }
+      
+      setCurrentNetwork(networkKey);
+      toast.success(`Switched to ${network.name}`, {
+        description: `You are now connected to the ${network.name} network.`,
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error switching network:', error);
+      toast.error('Failed to switch network', {
+        description: 'Please try again or switch manually in your wallet.',
+      });
+      return false;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Connect wallet function
-  const connectWallet = async (): Promise<void> => {
+  const connectWallet = async (networkKey: keyof typeof NETWORKS = 'EDUCHAIN'): Promise<void> => {
     if (typeof window.ethereum === 'undefined') {
       toast.error('No wallet detected', {
         description: 'Please install MetaMask or another Ethereum wallet to continue.',
@@ -229,24 +208,25 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
       // Request account access
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       
-      // Check and switch to the correct chain
+      // Switch to the requested network
+      const network = NETWORKS[networkKey];
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (parseInt(chainId, 16) !== CHAIN_ID) {
+      if (parseInt(chainId, 16) !== network.chainId) {
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: `0x${CHAIN_ID.toString(16)}` }]
+            params: [{ chainId: `0x${network.chainId.toString(16)}` }]
           });
         } catch (switchError: any) {
           if (switchError.code === 4902) {
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [{
-                chainId: `0x${CHAIN_ID.toString(16)}`,
-                chainName: 'Educhain',
-                nativeCurrency: { name: 'EDUCHAIN', symbol: 'EDU', decimals: 18 },
-                rpcUrls: [RPC_URL],
-                blockExplorerUrls: ['https://opencampus-codex.blockscout.com/']
+                chainId: `0x${network.chainId.toString(16)}`,
+                chainName: network.name,
+                nativeCurrency: { name: network.name, symbol: network.symbol, decimals: 18 },
+                rpcUrls: [network.rpcUrl],
+                blockExplorerUrls: [network.blockExplorer]
               }]
             });
           } else {
@@ -264,16 +244,17 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
       
       // Set up contract
       const signer = await provider.getSigner();
-      const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, ContractABI, signer);
+      const contractInstance = new ethers.Contract(network.contractAddress, ContractABI, signer);
       
       // Update state
       setWalletAddress(walletAddr);
       setIsConnected(true);
-      setBalance(parseFloat(balanceEth).toFixed(4) + ' ETH');
+      setBalance(parseFloat(balanceEth).toFixed(4) + ` ${network.symbol}`);
       setContract(contractInstance);
+      setCurrentNetwork(networkKey);
       
       toast.success('Wallet connected successfully!', {
-        description: `Connected to ${walletAddr.substring(0, 6)}...${walletAddr.substring(38)}`,
+        description: `Connected to ${walletAddr.substring(0, 6)}...${walletAddr.substring(38)} on ${network.name}`,
       });
       
       // Save to local storage for user identification
@@ -349,7 +330,7 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
       await tx.wait();
       
       toast.success('Session booked successfully!', {
-        description: 'Your tutoring session has been recorded on the blockchain.',
+        description: `Your tutoring session has been recorded on the ${NETWORKS[currentNetwork].name} blockchain.`,
       });
       
       return true;
@@ -407,7 +388,9 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
     bookSession,
     completeSession,
     isProcessing,
-    contract
+    contract,
+    currentNetwork,
+    switchNetwork
   };
 
   return (
