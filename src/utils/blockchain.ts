@@ -143,7 +143,7 @@ export const requireAuth = (): boolean => {
  * @returns {keyof typeof NETWORKS} Suggested network key
  */
 export const getPreferredNetwork = (): keyof typeof NETWORKS => {
-  // Use Sepolia as the default network
+  // Always use Sepolia as the default network
   return 'SEPOLIA';
 };
 

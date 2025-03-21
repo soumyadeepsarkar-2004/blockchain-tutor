@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -11,8 +10,8 @@ import { Clock, Users, Award, BookOpen, CheckCircle, LockIcon } from 'lucide-rea
 import { useBlockchain } from '@/context/BlockchainContext';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { redirectToPayment } from '@/utils/blockchain';
 
-// Match with courses in Courses.tsx
 const coursesData = [
   {
     id: '1',
@@ -125,7 +124,6 @@ const CourseDetail = () => {
   const [isEnrolled, setIsEnrolled] = useState(false);
   
   useEffect(() => {
-    // Check if user is logged in and if they're enrolled in this course
     const user = localStorage.getItem('user');
     if (user) {
       setIsLoggedIn(true);
@@ -134,7 +132,6 @@ const CourseDetail = () => {
       setIsEnrolled(enrolledCourses.includes(id));
     }
     
-    // Scroll to top
     window.scrollTo(0, 0);
   }, [id]);
   
@@ -156,7 +153,6 @@ const CourseDetail = () => {
     );
   }
   
-  // Calculate total lessons and completed lessons
   const totalLessons = course.modules.reduce((total, module) => total + module.lessons.length, 0);
   const completedLessons = course.modules.reduce((total, module) => {
     return total + module.lessons.filter(lesson => lesson.completed).length;
@@ -173,21 +169,9 @@ const CourseDetail = () => {
       return;
     }
     
-    // Store enrolled course in local storage
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const enrolledCourses = user.enrolledCourses || [];
-    
-    if (!enrolledCourses.includes(id)) {
-      enrolledCourses.push(id);
-      user.enrolledCourses = enrolledCourses;
-      localStorage.setItem('user', JSON.stringify(user));
+    if (course) {
+      redirectToPayment('course', course.id, course.price);
     }
-    
-    setIsEnrolled(true);
-    
-    toast.success("Enrollment Successful", {
-      description: `You've successfully enrolled in ${course.title}`,
-    });
   };
   
   const handlePlayLesson = (lesson: any) => {
@@ -201,7 +185,6 @@ const CourseDetail = () => {
     } else {
       toast.success(`Playing: ${lesson.title}`);
       
-      // Mark the lesson as completed
       const updatedCoursesData = [...coursesData];
       const courseIndex = updatedCoursesData.findIndex(c => c.id === id);
       
@@ -228,7 +211,6 @@ const CourseDetail = () => {
       <Header />
       
       <main className="flex-grow pt-20">
-        {/* Course Header */}
         <section className="relative py-12 px-6">
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 items-center">
             <div>
@@ -310,7 +292,6 @@ const CourseDetail = () => {
           </div>
         </section>
         
-        {/* Course Content */}
         <section className="py-12 px-6 bg-secondary/50">
           <div className="max-w-7xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab}>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
@@ -6,9 +7,9 @@ import { useBlockchain, NETWORKS } from "@/context/BlockchainContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { formatPrice, getPreferredNetwork, isNetworkConfigured } from "@/utils/blockchain";
+import { formatPrice, getPreferredNetwork, isNetworkConfigured, priceToHundredths } from "@/utils/blockchain";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Check, XCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PaymentDetails {
@@ -21,8 +22,10 @@ interface PaymentDetails {
 const Payment = () => {
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
+  const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const { isConnected, connectWallet, bookSession, currentNetwork, switchNetwork } = useBlockchain();
-  const preferredNetwork = getPreferredNetwork();
+  const preferredNetwork = 'SEPOLIA'; // Always use Sepolia
   const [selectedNetwork, setSelectedNetwork] = useState<keyof typeof NETWORKS>(preferredNetwork);
   const navigate = useNavigate();
 
@@ -50,64 +53,100 @@ const Payment = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (currentNetwork === 'EDUCHAIN' || currentNetwork === 'SEPOLIA') {
-      setSelectedNetwork(currentNetwork);
-    } else {
-      setSelectedNetwork(preferredNetwork);
-    }
-  }, [currentNetwork, preferredNetwork]);
-
-  const handleNetworkChange = (value: string) => {
-    setSelectedNetwork(value as keyof typeof NETWORKS);
-  };
+    // Always set to Sepolia
+    setSelectedNetwork('SEPOLIA');
+  }, [currentNetwork]);
 
   const handlePayment = async () => {
     if (!paymentDetails) return;
     
     if (!isConnected) {
       try {
-        await connectWallet(selectedNetwork);
+        await connectWallet('SEPOLIA'); // Always connect to Sepolia
       } catch (error) {
         toast.error("Wallet connection failed", {
           description: "Please connect your wallet to proceed with payment.",
         });
         return;
       }
-    } else if (currentNetwork !== selectedNetwork) {
-      const switched = await switchNetwork(selectedNetwork);
+    } else if (currentNetwork !== 'SEPOLIA') {
+      const switched = await switchNetwork('SEPOLIA');
       if (!switched) {
         toast.error("Network switch failed", {
-          description: "Please manually switch networks in your wallet.",
+          description: "Please manually switch to Sepolia network in your wallet.",
         });
         return;
       }
     }
     
     setIsProcessing(true);
+    setPaymentStatus('pending');
     
     try {
       if (paymentDetails.itemType === 'course') {
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Create a unique session name for the blockchain transaction
+        const courseId = paymentDetails.itemId;
+        const timestamp = Date.now();
+        const sessionName = `Course_${courseId}_${timestamp}`;
         
-        const enrolledCoursesData = localStorage.getItem('enrolledCourses');
-        const enrolledCourses = enrolledCoursesData ? JSON.parse(enrolledCoursesData) : [];
+        // Get user data
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const studentName = user.name || user.email || 'Student';
         
-        if (!enrolledCourses.some((c: any) => c.id === paymentDetails.itemId)) {
-          enrolledCourses.push({
-            id: paymentDetails.itemId,
-            title: `Course ${paymentDetails.itemId}`,
-            enrolledDate: new Date().toISOString(),
-            progress: 0
+        // Convert price to contract format
+        const priceInHundredths = priceToHundredths(paymentDetails.price);
+        const sessionTime = 100; // Dummy value for course purchase
+        
+        // Call blockchain function to record the purchase
+        const success = await bookSession(
+          sessionName,
+          sessionTime,
+          paymentDetails.price
+        );
+        
+        if (success) {
+          // Store enrolled course in localStorage
+          const enrolledCoursesData = localStorage.getItem('enrolledCourses');
+          const enrolledCourses = enrolledCoursesData ? JSON.parse(enrolledCoursesData) : [];
+          
+          if (!enrolledCourses.some((c: any) => c.id === paymentDetails.itemId)) {
+            enrolledCourses.push({
+              id: paymentDetails.itemId,
+              title: `Course ${paymentDetails.itemId}`,
+              enrolledDate: new Date().toISOString(),
+              progress: 0
+            });
+            
+            localStorage.setItem('enrolledCourses', JSON.stringify(enrolledCourses));
+          }
+          
+          // Also update the user object
+          const userObj = JSON.parse(localStorage.getItem('user') || '{}');
+          const userEnrolledCourses = userObj.enrolledCourses || [];
+          
+          if (!userEnrolledCourses.includes(paymentDetails.itemId)) {
+            userEnrolledCourses.push(paymentDetails.itemId);
+            userObj.enrolledCourses = userEnrolledCourses;
+            localStorage.setItem('user', JSON.stringify(userObj));
+          }
+          
+          setPaymentStatus('success');
+          setTransactionHash('0x'); // Will be replaced with actual hash
+          
+          toast.success("Course purchased successfully!", {
+            description: "Your transaction has been recorded on the Sepolia blockchain.",
           });
           
-          localStorage.setItem('enrolledCourses', JSON.stringify(enrolledCourses));
+          // Redirect after a short delay to show success screen
+          setTimeout(() => {
+            localStorage.removeItem('pendingPayment');
+            navigate(`/courses/${paymentDetails.itemId}`);
+          }, 3000);
+        } else {
+          throw new Error("Blockchain transaction failed");
         }
-        
-        toast.success("Course purchased successfully!", {
-          description: "You have been enrolled in the course.",
-        });
-        
       } else if (paymentDetails.itemType === 'tutor') {
+        // Handle tutor booking - using existing code
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         const studentName = user.name || user.email;
         
@@ -121,25 +160,72 @@ const Payment = () => {
         );
         
         if (success) {
+          setPaymentStatus('success');
+          setTransactionHash('0x'); // Will be replaced with actual hash
+          
           toast.success("Tutor session booked successfully!", {
             description: `Your session has been added to the ${NETWORKS[selectedNetwork].name} blockchain.`,
           });
+          
+          setTimeout(() => {
+            localStorage.removeItem('pendingPayment');
+            navigate('/dashboard');
+          }, 3000);
         } else {
           throw new Error("Blockchain transaction failed");
         }
       }
-      
-      localStorage.removeItem('pendingPayment');
-      navigate('/dashboard');
-      
     } catch (error) {
       console.error("Payment error:", error);
+      setPaymentStatus('failed');
+      
       toast.error("Payment failed", {
-        description: "There was an error processing your payment. Please try again.",
+        description: "There was an error processing your payment on the blockchain. Please try again.",
       });
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const renderPaymentStatus = () => {
+    if (paymentStatus === 'success') {
+      return (
+        <div className="text-center py-6 space-y-4">
+          <div className="mx-auto bg-green-100 rounded-full p-3 w-16 h-16 flex items-center justify-center">
+            <Check className="h-8 w-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold">Payment Successful!</h2>
+          <p className="text-muted-foreground">
+            Your transaction has been confirmed on the {NETWORKS[selectedNetwork].name} network.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            You will be redirected shortly...
+          </p>
+        </div>
+      );
+    } else if (paymentStatus === 'failed') {
+      return (
+        <div className="text-center py-6 space-y-4">
+          <div className="mx-auto bg-red-100 rounded-full p-3 w-16 h-16 flex items-center justify-center">
+            <XCircle className="h-8 w-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold">Payment Failed</h2>
+          <p className="text-muted-foreground">
+            There was an error processing your transaction on the blockchain.
+          </p>
+          <div className="pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setPaymentStatus(null)}
+            >
+              Try Again
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -159,61 +245,57 @@ const Payment = () => {
                     Review your order before proceeding with payment
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Item Type</p>
-                    <p className="font-medium capitalize">{paymentDetails.itemType}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Item ID</p>
-                    <p className="font-medium">{paymentDetails.itemId}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Price</p>
-                    <p className="font-medium text-lg">${formatPrice(paymentDetails.price * 100)}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Blockchain Network</p>
-                    <Select value={selectedNetwork} onValueChange={handleNetworkChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select network" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.keys(NETWORKS).map((networkKey) => (
-                          <SelectItem key={networkKey} value={networkKey}>
-                            {NETWORKS[networkKey as keyof typeof NETWORKS].name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {selectedNetwork === 'SEPOLIA' && !isNetworkConfigured('SEPOLIA') && (
-                    <Alert className="bg-yellow-50 border-yellow-200">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <AlertDescription className="text-yellow-600">
-                        Using Sepolia requires an Infura ID. Please update the NETWORKS configuration with your Infura ID.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  <div className="pt-4">
-                    <Button 
-                      className="w-full"
-                      onClick={handlePayment}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? "Processing..." : `Pay $${formatPrice(paymentDetails.price * 100)}`}
-                    </Button>
+                
+                {paymentStatus ? (
+                  <CardContent>
+                    {renderPaymentStatus()}
+                  </CardContent>
+                ) : (
+                  <CardContent className="space-y-6">
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Item Type</p>
+                      <p className="font-medium capitalize">{paymentDetails.itemType}</p>
+                    </div>
                     
-                    <p className="text-xs text-center mt-4 text-muted-foreground">
-                      By clicking Pay, you agree to our Terms of Service and authorize a blockchain transaction on {NETWORKS[selectedNetwork].name}.
-                    </p>
-                  </div>
-                </CardContent>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Item ID</p>
+                      <p className="font-medium">{paymentDetails.itemId}</p>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Price</p>
+                      <p className="font-medium text-lg">${formatPrice(paymentDetails.price * 100)}</p>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Blockchain Network</p>
+                      <p className="font-medium">Ethereum Sepolia Testnet</p>
+                    </div>
+                    
+                    {!isNetworkConfigured('SEPOLIA') && (
+                      <Alert className="bg-yellow-50 border-yellow-200">
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                        <AlertDescription className="text-yellow-600">
+                          Using Sepolia requires an Infura ID. Please update the NETWORKS configuration with your Infura ID.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    <div className="pt-4">
+                      <Button 
+                        className="w-full"
+                        onClick={handlePayment}
+                        disabled={isProcessing}
+                      >
+                        {isProcessing ? "Processing..." : `Pay $${formatPrice(paymentDetails.price * 100)} with Sepolia ETH`}
+                      </Button>
+                      
+                      <p className="text-xs text-center mt-4 text-muted-foreground">
+                        By clicking Pay, you agree to our Terms of Service and authorize a blockchain transaction on {NETWORKS['SEPOLIA'].name}.
+                      </p>
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             </div>
           ) : (
