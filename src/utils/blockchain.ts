@@ -104,8 +104,7 @@ export const getExplorerUrl = (
  * @param {number} price - Price of the item
  */
 export const redirectToPayment = (itemType: 'course' | 'tutor', itemId: string, price: number): void => {
-  // In a real application, this would redirect to a payment gateway
-  // For now, we'll store the payment info in localStorage and redirect to a payment page
+  // Store the payment info in localStorage and redirect to a payment page
   const paymentInfo = {
     itemType,
     itemId,
@@ -115,7 +114,7 @@ export const redirectToPayment = (itemType: 'course' | 'tutor', itemId: string, 
   
   localStorage.setItem('pendingPayment', JSON.stringify(paymentInfo));
   
-  // Redirect to a payment page (you would create this page)
+  // Redirect to payment page
   window.location.href = '/payment';
 };
 
@@ -160,4 +159,19 @@ export const isNetworkConfigured = (network: keyof typeof NETWORKS): boolean => 
     return !rpcUrl.includes('YOUR_INFURA_ID');
   }
   return true;
+};
+
+/**
+ * Get estimated gas needed for a blockchain transaction 
+ * @param {number} priceInUSD - Price in USD
+ * @returns {string} Estimated gas fee in ETH
+ */
+export const estimateGasFee = (priceInUSD: number): string => {
+  // Simple estimation for Sepolia testnet
+  // In production, you would use actual gas price from network
+  const gasUnits = 100000; // Approximate gas for a contract interaction
+  const gasPriceGwei = 2; // Approximate gas price in Gwei
+  
+  const gasFeeEth = (gasUnits * gasPriceGwei) / 1_000_000_000;
+  return gasFeeEth.toFixed(6);
 };

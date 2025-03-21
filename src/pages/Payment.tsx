@@ -8,9 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { formatPrice, getPreferredNetwork, isNetworkConfigured, priceToHundredths } from "@/utils/blockchain";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, Check, XCircle } from "lucide-react";
+import { AlertCircle, Check, XCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import TransactionDetails from "@/components/TransactionDetails";
 
 interface PaymentDetails {
   itemType: 'course' | 'tutor';
@@ -24,9 +24,8 @@ const Payment = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
-  const { isConnected, connectWallet, bookSession, currentNetwork, switchNetwork } = useBlockchain();
+  const { isConnected, connectWallet, bookSession, currentNetwork, switchNetwork, walletAddress } = useBlockchain();
   const preferredNetwork = 'SEPOLIA'; // Always use Sepolia
-  const [selectedNetwork, setSelectedNetwork] = useState<keyof typeof NETWORKS>(preferredNetwork);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,11 +50,6 @@ const Payment = () => {
       navigate('/');
     }
   }, [navigate]);
-
-  useEffect(() => {
-    // Always set to Sepolia
-    setSelectedNetwork('SEPOLIA');
-  }, [currentNetwork]);
 
   const handlePayment = async () => {
     if (!paymentDetails) return;
@@ -97,6 +91,10 @@ const Payment = () => {
         const priceInHundredths = priceToHundredths(paymentDetails.price);
         const sessionTime = 100; // Dummy value for course purchase
         
+        toast.info("MetaMask transaction requested", {
+          description: "Please check your MetaMask wallet to confirm the transaction.",
+        });
+        
         // Call blockchain function to record the purchase
         const success = await bookSession(
           sessionName,
@@ -131,7 +129,7 @@ const Payment = () => {
           }
           
           setPaymentStatus('success');
-          setTransactionHash('0x'); // Will be replaced with actual hash
+          setTransactionHash('0x'); // Will be replaced with actual hash from success response
           
           toast.success("Course purchased successfully!", {
             description: "Your transaction has been recorded on the Sepolia blockchain.",
@@ -153,6 +151,10 @@ const Payment = () => {
         const tutorName = `Tutor ${paymentDetails.itemId}`;
         const sessionTime = 100;
         
+        toast.info("MetaMask transaction requested", {
+          description: "Please check your MetaMask wallet to confirm the transaction.",
+        });
+        
         const success = await bookSession(
           tutorName,
           sessionTime,
@@ -164,7 +166,7 @@ const Payment = () => {
           setTransactionHash('0x'); // Will be replaced with actual hash
           
           toast.success("Tutor session booked successfully!", {
-            description: `Your session has been added to the ${NETWORKS[selectedNetwork].name} blockchain.`,
+            description: `Your session has been added to the ${NETWORKS[preferredNetwork].name} blockchain.`,
           });
           
           setTimeout(() => {
@@ -188,7 +190,19 @@ const Payment = () => {
   };
 
   const renderPaymentStatus = () => {
-    if (paymentStatus === 'success') {
+    if (paymentStatus === 'pending') {
+      return (
+        <div className="text-center py-6 space-y-4">
+          <div className="mx-auto bg-blue-100 rounded-full p-3 w-16 h-16 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+          </div>
+          <h2 className="text-2xl font-bold">Processing Payment</h2>
+          <p className="text-muted-foreground">
+            Please confirm the transaction in MetaMask...
+          </p>
+        </div>
+      );
+    } else if (paymentStatus === 'success') {
       return (
         <div className="text-center py-6 space-y-4">
           <div className="mx-auto bg-green-100 rounded-full p-3 w-16 h-16 flex items-center justify-center">
@@ -196,7 +210,7 @@ const Payment = () => {
           </div>
           <h2 className="text-2xl font-bold">Payment Successful!</h2>
           <p className="text-muted-foreground">
-            Your transaction has been confirmed on the {NETWORKS[selectedNetwork].name} network.
+            Your transaction has been confirmed on the {NETWORKS[preferredNetwork].name} network.
           </p>
           <p className="text-sm text-muted-foreground">
             You will be redirected shortly...
@@ -281,13 +295,24 @@ const Payment = () => {
                       </Alert>
                     )}
                     
+                    <TransactionDetails 
+                      price={paymentDetails.price}
+                      network="SEPOLIA"
+                      walletAddress={walletAddress}
+                    />
+                    
                     <div className="pt-4">
                       <Button 
                         className="w-full"
                         onClick={handlePayment}
                         disabled={isProcessing}
                       >
-                        {isProcessing ? "Processing..." : `Pay $${formatPrice(paymentDetails.price * 100)} with Sepolia ETH`}
+                        {isProcessing ? 
+                          <div className="flex items-center">
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </div> 
+                          : `Pay $${formatPrice(paymentDetails.price * 100)} with MetaMask`}
                       </Button>
                       
                       <p className="text-xs text-center mt-4 text-muted-foreground">
