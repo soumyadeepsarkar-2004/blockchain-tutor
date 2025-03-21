@@ -9,8 +9,8 @@ export const NETWORKS = {
   SEPOLIA: {
     name: 'Ethereum Sepolia',
     chainId: 11155111,
-    rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_ID', // Replace with your Infura ID
-    contractAddress: '0xcf4f8075ee7B8f128fF2BfdF3DcEA82de88DA6AB', // Should be replaced with actual Sepolia contract
+    rpcUrl: 'https://sepolia.infura.io/v3/686bc69613964937976d3161281f0157', // Updated with the provided Infura URL
+    contractAddress: '0x6C4b713F4fECDf9bFFc6842E8D1feCCB395dAc71', // Updated with the provided contract address
     symbol: 'ETH',
     blockExplorer: 'https://sepolia.etherscan.io/'
   },
