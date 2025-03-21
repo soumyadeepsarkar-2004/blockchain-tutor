@@ -200,7 +200,7 @@ const Payment = () => {
                   </div>
                   
                   {selectedNetwork === 'SEPOLIA' && (
-                    <Alert variant="warning" className="bg-yellow-50 border-yellow-200">
+                    <Alert className="bg-yellow-50 border-yellow-200">
                       <AlertCircle className="h-4 w-4 text-yellow-600" />
                       <AlertDescription className="text-yellow-600">
                         Using Sepolia requires an Infura ID. You'll need to set this in your wallet connection.

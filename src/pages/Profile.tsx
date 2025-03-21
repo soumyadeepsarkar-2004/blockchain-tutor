@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -147,7 +146,7 @@ const Profile = () => {
               <CardContent>
                 <Button 
                   size="lg" 
-                  onClick={connectWallet} 
+                  onClick={() => connectWallet('SEPOLIA')}
                   className="mt-4"
                 >
                   Connect Wallet

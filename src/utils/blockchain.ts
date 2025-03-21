@@ -137,3 +137,26 @@ export const requireAuth = (): boolean => {
   
   return true;
 };
+
+/**
+ * Get the suggested network for the application (Sepolia by default)
+ * @returns {keyof typeof NETWORKS} Suggested network key
+ */
+export const getPreferredNetwork = (): keyof typeof NETWORKS => {
+  // Use Sepolia as the default network
+  return 'SEPOLIA';
+};
+
+/**
+ * Check if the network has the correct configuration
+ * @param {keyof typeof NETWORKS} network - Network to check
+ * @returns {boolean} True if network configuration is valid
+ */
+export const isNetworkConfigured = (network: keyof typeof NETWORKS): boolean => {
+  // Specifically check if Sepolia has an Infura ID set
+  if (network === 'SEPOLIA') {
+    const rpcUrl = NETWORKS[network].rpcUrl;
+    return !rpcUrl.includes('YOUR_INFURA_ID');
+  }
+  return true;
+};

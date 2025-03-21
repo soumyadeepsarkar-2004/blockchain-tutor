@@ -3,17 +3,10 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { toast } from 'sonner';
 import { ethers } from 'ethers';
 import ContractABI from '@/utils/ContractABI.json';
+import { getPreferredNetwork, isNetworkConfigured } from '@/utils/blockchain';
 
 // Network Configuration
 export const NETWORKS = {
-  EDUCHAIN: {
-    name: 'Educhain',
-    chainId: 656476,
-    rpcUrl: 'https://rpc.open-campus-codex.gelato.digital',
-    contractAddress: '0xcf4f8075ee7B8f128fF2BfdF3DcEA82de88DA6AB',
-    symbol: 'EDU',
-    blockExplorer: 'https://opencampus-codex.blockscout.com/'
-  },
   SEPOLIA: {
     name: 'Ethereum Sepolia',
     chainId: 11155111,
@@ -21,6 +14,14 @@ export const NETWORKS = {
     contractAddress: '0xcf4f8075ee7B8f128fF2BfdF3DcEA82de88DA6AB', // Should be replaced with actual Sepolia contract
     symbol: 'ETH',
     blockExplorer: 'https://sepolia.etherscan.io/'
+  },
+  EDUCHAIN: {
+    name: 'Educhain',
+    chainId: 656476,
+    rpcUrl: 'https://rpc.open-campus-codex.gelato.digital',
+    contractAddress: '0xcf4f8075ee7B8f128fF2BfdF3DcEA82de88DA6AB',
+    symbol: 'EDU',
+    blockExplorer: 'https://opencampus-codex.blockscout.com/'
   }
 };
 
@@ -49,7 +50,7 @@ const BlockchainContext = createContext<BlockchainContextType>({
   completeSession: async () => false,
   isProcessing: false,
   contract: null,
-  currentNetwork: 'EDUCHAIN',
+  currentNetwork: 'SEPOLIA',
   switchNetwork: async () => false
 });
 
@@ -65,7 +66,7 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
   const [balance, setBalance] = useState('0');
   const [isProcessing, setIsProcessing] = useState(false);
   const [contract, setContract] = useState<ethers.Contract | null>(null);
-  const [currentNetwork, setCurrentNetwork] = useState<keyof typeof NETWORKS>('EDUCHAIN');
+  const [currentNetwork, setCurrentNetwork] = useState<keyof typeof NETWORKS>(getPreferredNetwork());
 
   // Check for wallet connection on load
   useEffect(() => {
@@ -79,9 +80,9 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
             const chainIdNumber = parseInt(chainId, 16);
             
             // Determine which network we're on
-            let network: keyof typeof NETWORKS = 'EDUCHAIN';
-            if (chainIdNumber === NETWORKS.SEPOLIA.chainId) {
-              network = 'SEPOLIA';
+            let network: keyof typeof NETWORKS = 'SEPOLIA';
+            if (chainIdNumber === NETWORKS.EDUCHAIN.chainId) {
+              network = 'EDUCHAIN';
             }
             setCurrentNetwork(network);
             
@@ -194,10 +195,18 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
   };
 
   // Connect wallet function
-  const connectWallet = async (networkKey: keyof typeof NETWORKS = 'EDUCHAIN'): Promise<void> => {
+  const connectWallet = async (networkKey: keyof typeof NETWORKS = 'SEPOLIA'): Promise<void> => {
     if (typeof window.ethereum === 'undefined') {
       toast.error('No wallet detected', {
         description: 'Please install MetaMask or another Ethereum wallet to continue.',
+      });
+      return;
+    }
+    
+    // Check if Sepolia is configured with a valid Infura ID
+    if (networkKey === 'SEPOLIA' && !isNetworkConfigured('SEPOLIA')) {
+      toast.error('Sepolia configuration required', {
+        description: 'Please set your Infura ID in the NETWORKS configuration.',
       });
       return;
     }

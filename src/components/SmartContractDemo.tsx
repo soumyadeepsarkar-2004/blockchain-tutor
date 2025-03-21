@@ -6,6 +6,8 @@ import { Code, Check, Copy, Clock, DollarSign, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useBlockchain, NETWORKS } from "@/context/BlockchainContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { isNetworkConfigured } from "@/utils/blockchain";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const SmartContractDemo = () => {
     const [isCopied, setIsCopied] = useState(false);
@@ -21,7 +23,7 @@ const SmartContractDemo = () => {
     const [warning, setWarning] = useState("");
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const { isConnected, connectWallet, currentNetwork, switchNetwork } = useBlockchain();
-    const [selectedNetwork, setSelectedNetwork] = useState<keyof typeof NETWORKS>(currentNetwork);
+    const [selectedNetwork, setSelectedNetwork] = useState<keyof typeof NETWORKS>('SEPOLIA');
 
     useEffect(() => {
         // Check if user is logged in
@@ -33,6 +35,9 @@ const SmartContractDemo = () => {
         // Set the selected network to match current network when it changes
         setSelectedNetwork(currentNetwork);
     }, [currentNetwork]);
+
+    // Check if Sepolia is configured properly
+    const isSepoliaConfigured = isNetworkConfigured('SEPOLIA');
 
     const contractCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -106,6 +111,14 @@ contract TutorSession {
         if (!isLoggedIn) {
             toast.error("Authentication required", {
                 description: "Please login to book a session",
+            });
+            return;
+        }
+        
+        // Check if we're using Sepolia and it's properly configured
+        if (selectedNetwork === 'SEPOLIA' && !isSepoliaConfigured) {
+            toast.error("Sepolia configuration required", {
+                description: "Please set your Infura ID in the application configuration.",
             });
             return;
         }
@@ -298,6 +311,13 @@ contract TutorSession {
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                        {selectedNetwork === 'SEPOLIA' && !isSepoliaConfigured && (
+                                            <Alert className="mt-2 mb-2 bg-yellow-50 border-yellow-200 p-2">
+                                                <AlertDescription className="text-yellow-600 text-xs">
+                                                    To use Sepolia, you need to set your Infura ID in the application configuration.
+                                                </AlertDescription>
+                                            </Alert>
+                                        )}
                                         <p className="text-sm text-[#86868b]">
                                             Transaction will be processed on the {NETWORKS[selectedNetwork].name} network.
                                         </p>
