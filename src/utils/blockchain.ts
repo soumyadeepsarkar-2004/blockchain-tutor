@@ -1,3 +1,4 @@
+
 import { NETWORKS } from "@/context/BlockchainContext";
 
 /**
@@ -152,9 +153,10 @@ export const getPreferredNetwork = (): keyof typeof NETWORKS => {
  * @returns {boolean} True if network configuration is valid
  */
 export const isNetworkConfigured = (network: keyof typeof NETWORKS): boolean => {
-  // Specifically check if Sepolia has an Infura ID set
+  // Specifically check if Sepolia has a proper RPC URL set
   if (network === 'SEPOLIA') {
     const rpcUrl = NETWORKS[network].rpcUrl;
+    // Check if the Infura ID is no longer the placeholder
     return !rpcUrl.includes('YOUR_INFURA_ID');
   }
   return true;
