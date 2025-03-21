@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
@@ -7,7 +6,7 @@ import { useBlockchain, NETWORKS } from "@/context/BlockchainContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { formatPrice } from "@/utils/blockchain";
+import { formatPrice, getPreferredNetwork, isNetworkConfigured } from "@/utils/blockchain";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -23,10 +22,10 @@ const Payment = () => {
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { isConnected, connectWallet, bookSession, currentNetwork, switchNetwork } = useBlockchain();
-  const [selectedNetwork, setSelectedNetwork] = useState<keyof typeof NETWORKS>(currentNetwork);
+  const preferredNetwork = getPreferredNetwork();
+  const [selectedNetwork, setSelectedNetwork] = useState<keyof typeof NETWORKS>(preferredNetwork);
   const navigate = useNavigate();
 
-  // Get payment details from localStorage
   useEffect(() => {
     const paymentInfo = localStorage.getItem('pendingPayment');
     
@@ -50,10 +49,13 @@ const Payment = () => {
     }
   }, [navigate]);
 
-  // Update selected network when current network changes
   useEffect(() => {
-    setSelectedNetwork(currentNetwork);
-  }, [currentNetwork]);
+    if (currentNetwork === 'EDUCHAIN' || currentNetwork === 'SEPOLIA') {
+      setSelectedNetwork(currentNetwork);
+    } else {
+      setSelectedNetwork(preferredNetwork);
+    }
+  }, [currentNetwork, preferredNetwork]);
 
   const handleNetworkChange = (value: string) => {
     setSelectedNetwork(value as keyof typeof NETWORKS);
@@ -72,7 +74,6 @@ const Payment = () => {
         return;
       }
     } else if (currentNetwork !== selectedNetwork) {
-      // Switch to the selected network if needed
       const switched = await switchNetwork(selectedNetwork);
       if (!switched) {
         toast.error("Network switch failed", {
@@ -85,20 +86,16 @@ const Payment = () => {
     setIsProcessing(true);
     
     try {
-      // Process payment based on item type
       if (paymentDetails.itemType === 'course') {
-        // Simulate course purchase
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Save to enrolled courses in localStorage
         const enrolledCoursesData = localStorage.getItem('enrolledCourses');
         const enrolledCourses = enrolledCoursesData ? JSON.parse(enrolledCoursesData) : [];
         
-        // Add this course if not already enrolled
         if (!enrolledCourses.some((c: any) => c.id === paymentDetails.itemId)) {
           enrolledCourses.push({
             id: paymentDetails.itemId,
-            title: `Course ${paymentDetails.itemId}`, // This would come from API in a real app
+            title: `Course ${paymentDetails.itemId}`,
             enrolledDate: new Date().toISOString(),
             progress: 0
           });
@@ -111,13 +108,11 @@ const Payment = () => {
         });
         
       } else if (paymentDetails.itemType === 'tutor') {
-        // Use blockchain contract to book a session
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         const studentName = user.name || user.email;
         
-        // This would come from API in a real app
         const tutorName = `Tutor ${paymentDetails.itemId}`;
-        const sessionTime = 100; // 1 hour in hundredths
+        const sessionTime = 100;
         
         const success = await bookSession(
           tutorName,
@@ -134,10 +129,7 @@ const Payment = () => {
         }
       }
       
-      // Clear the pending payment
       localStorage.removeItem('pendingPayment');
-      
-      // Redirect to dashboard
       navigate('/dashboard');
       
     } catch (error) {
@@ -199,11 +191,11 @@ const Payment = () => {
                     </Select>
                   </div>
                   
-                  {selectedNetwork === 'SEPOLIA' && (
+                  {selectedNetwork === 'SEPOLIA' && !isNetworkConfigured('SEPOLIA') && (
                     <Alert className="bg-yellow-50 border-yellow-200">
                       <AlertCircle className="h-4 w-4 text-yellow-600" />
                       <AlertDescription className="text-yellow-600">
-                        Using Sepolia requires an Infura ID. You'll need to set this in your wallet connection.
+                        Using Sepolia requires an Infura ID. Please update the NETWORKS configuration with your Infura ID.
                       </AlertDescription>
                     </Alert>
                   )}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from '@/components/ui/button';
 import { Input } from "@/components/ui/input";
@@ -6,7 +5,7 @@ import { Code, Check, Copy, Clock, DollarSign, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useBlockchain, NETWORKS } from "@/context/BlockchainContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { isNetworkConfigured } from "@/utils/blockchain";
+import { getPreferredNetwork, isNetworkConfigured } from "@/utils/blockchain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const SmartContractDemo = () => {
@@ -23,7 +22,8 @@ const SmartContractDemo = () => {
     const [warning, setWarning] = useState("");
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const { isConnected, connectWallet, currentNetwork, switchNetwork } = useBlockchain();
-    const [selectedNetwork, setSelectedNetwork] = useState<keyof typeof NETWORKS>('SEPOLIA');
+    const preferredNetwork = getPreferredNetwork();
+    const [selectedNetwork, setSelectedNetwork] = useState<keyof typeof NETWORKS>(preferredNetwork);
 
     useEffect(() => {
         // Check if user is logged in
@@ -33,8 +33,12 @@ const SmartContractDemo = () => {
 
     useEffect(() => {
         // Set the selected network to match current network when it changes
-        setSelectedNetwork(currentNetwork);
-    }, [currentNetwork]);
+        if (currentNetwork === 'EDUCHAIN' || currentNetwork === 'SEPOLIA') {
+            setSelectedNetwork(currentNetwork);
+        } else {
+            setSelectedNetwork(preferredNetwork);
+        }
+    }, [currentNetwork, preferredNetwork]);
 
     // Check if Sepolia is configured properly
     const isSepoliaConfigured = isNetworkConfigured('SEPOLIA');

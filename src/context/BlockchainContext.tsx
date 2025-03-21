@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
 import { ethers } from 'ethers';
@@ -10,7 +9,7 @@ export const NETWORKS = {
   SEPOLIA: {
     name: 'Ethereum Sepolia',
     chainId: 11155111,
-    rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_ID', // Users need to replace with their Infura ID
+    rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_ID', // Replace with your Infura ID
     contractAddress: '0xcf4f8075ee7B8f128fF2BfdF3DcEA82de88DA6AB', // Should be replaced with actual Sepolia contract
     symbol: 'ETH',
     blockExplorer: 'https://sepolia.etherscan.io/'
@@ -50,7 +49,7 @@ const BlockchainContext = createContext<BlockchainContextType>({
   completeSession: async () => false,
   isProcessing: false,
   contract: null,
-  currentNetwork: 'SEPOLIA',
+  currentNetwork: getPreferredNetwork(),
   switchNetwork: async () => false
 });
 
@@ -194,8 +193,8 @@ export const BlockchainProvider = ({ children }: BlockchainProviderProps) => {
     }
   };
 
-  // Connect wallet function
-  const connectWallet = async (networkKey: keyof typeof NETWORKS = 'SEPOLIA'): Promise<void> => {
+  // Connect wallet function with default network as Sepolia
+  const connectWallet = async (networkKey: keyof typeof NETWORKS = getPreferredNetwork()): Promise<void> => {
     if (typeof window.ethereum === 'undefined') {
       toast.error('No wallet detected', {
         description: 'Please install MetaMask or another Ethereum wallet to continue.',
